@@ -73,7 +73,7 @@ Probably the single greatest source of problems is unspecified units of measure,
 
 - [When NASA Lost a Spacecraft Due to a Metric Math Mistake](https://www.simscale.com/blog/nasa-mars-climate-orbiter-metric/)
 
-Got your own? Share in [discussions](https://github.com/liquidcarbon/affinity/discussions)!
+Have you ever stared at a bunch of numbers and had no clue what they represented?  Do you have an anecdote of bad things happening due un/misannotated data? Share in [discussions](https://github.com/liquidcarbon/affinity/discussions)!
 
 ## Future
 
