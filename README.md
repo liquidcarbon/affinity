@@ -15,11 +15,8 @@ class SensorData(af.Dataset):
   voltage: af.VectorF64("something we measured")
   is_laser_on: af.VectorBool("are the lights on?")
   exp_id: af.ScalarI32("FK to `experiment`")
-```
 
-This working concept covers the following:
-
-```python
+# this working concept covers the following:
 data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
 data = SensorData.build(...)        # ⚒️ build from external source, validate types
