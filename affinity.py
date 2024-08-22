@@ -116,3 +116,40 @@ class Dataset:
     @property
     def df(self) -> pd.DataFrame:
         return pd.DataFrame(self.__dict__)
+
+
+class VectorUntyped(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(object, values, comment, array_class)
+
+class VectorI8(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(pd.Int8Dtype(), values, comment, array_class)
+
+class VectorBool(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__("boolean", values, comment, array_class)
+
+class VectorI16(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(pd.Int16Dtype(), values, comment, array_class)
+
+class VectorI32(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(pd.Int32Dtype(), values, comment, array_class)
+
+class VectorI64(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(pd.Int64Dtype(), values, comment, array_class)
+
+class VectorF16(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(np.float16, values, comment, array_class)
+
+class VectorF32(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(np.float32, values, comment, array_class)
+
+class VectorF64(Vector):
+    def __init__(self, values=None, comment=None, array_class=pd.array):
+        super().__init__(np.float64, values, comment, array_class)

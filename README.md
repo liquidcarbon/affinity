@@ -10,9 +10,9 @@ import affinity as af
 
 class SensorData(af.Dataset):
   """Experimental data from Top Secret Sensor Tech."""
-  t: af.VectorF32("elapsed time")
-  channel: af.VectorI8("channel number")
-  voltage: af.VectorF64("something we measured")
+  t: af.VectorF32("elapsed time (sec)")
+  channel: af.VectorI8("channel number (left to right)")
+  voltage: af.VectorF64("something we measured (mV)")
   is_laser_on: af.VectorBool("are the lights on?")
   exp_id: af.ScalarI32("FK to `experiment`")
 
