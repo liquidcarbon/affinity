@@ -4,6 +4,7 @@ Module for creating well-documented datasets, with types and annotations.
 
 import numpy as np
 import pandas as pd
+from time import time
 from typing import Union
 
 
@@ -86,6 +87,7 @@ class Dataset:
         Scalars are filled in afterwards.
         """
         
+        self.origin = {"created_ts": int(time() * 1000)}
         _sizes = {}
         _vectors = self.__class__.list_vectors()
         if not _vectors:
@@ -105,9 +107,12 @@ class Dataset:
             _scalar.value = _value
             _vector_from_scalar = Vector.from_scalar(_scalar, len(self))
             setattr(self, scalar_name, _vector_from_scalar)
+        
+        if len(self.origin) == 1:  # only after direct __init__
+            self.origin["source"] = "manual"
 
     def __len__(self):
-        return len(next(iter(self.__dict__.values())))
+        return len(next(iter(self.dict.values())))
     
     def sql(self, query):
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
@@ -125,10 +130,12 @@ class Dataset:
         return {k: self.__class__.__dict__[k].comment for k in self.dict}
 
     @property
-    def comments(self):
-        dd = self.data_dict
-        dd.update({self.__class__.__name__: self.__class__.__doc__})
-        return dd
+    def metadata(self):
+        return {
+            **self.data_dict,
+            self.__class__.__name__: self.__class__.__doc__,
+            "origin": self.origin
+        }
 
     @property
     def df(self) -> pd.DataFrame:

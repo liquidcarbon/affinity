@@ -21,10 +21,11 @@ data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
 data = SensorData.build(...)        # ⚒️ build from external source, validate types
 data.df                             # ✅ view as dataframe (Pandas/Polars/Arrow)
-data.comments                       # ✅ column and table comments
+data.metadata                       # ✅ annotations (data dict with column and dataset comments), origin
+data.origin                         # ✅ creation metadata, some data provenance
 data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
-data.to_parquet(...)                # ⚒️ data types, annotations in Parquet metadata
+data.to_parquet(...)                # ⚒️ data.metadata -> Parquet metadata
 ```
 
 ## How it works

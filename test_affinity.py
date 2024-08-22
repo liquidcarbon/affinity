@@ -37,8 +37,8 @@ def test_empty_dataset():
     class aDataset(af.Dataset):
         v = af.Vector(np.int8)
     data = aDataset()
-    data.alias = "this adds a new key to data.__dict__; data.dict not affected"
-    assert data.df.shape == (0, 1)
+    data.alias = "this adds a new key to data.__dict__ but not to data.dict"
+    assert data.df.shape == (0, 1)  # constructed from `data.dict`
     assert data.df.dtypes["v"] == np.int8
 
 
@@ -53,7 +53,8 @@ def test_simple_dataset():
     )
     assert len(data) == 2
     assert data.data_dict == {"v1": "first", "v2": "second"}
-    assert data.comments.get("aDataset") == "A well-documented dataset."
+    assert data.metadata.get("aDataset") == "A well-documented dataset."
+    assert data.metadata.get("origin").get("source") == "manual"
     expected_df = pd.DataFrame({
         "v1": [0., 1.],
         "v2": [2, 2]
