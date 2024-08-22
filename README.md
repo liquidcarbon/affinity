@@ -3,17 +3,23 @@
 Affinity makes it easy to create well-annotated datasets from vector data.  
 What your data means should always travel together with the data.
 
-```
+## Usage
+
+```python
 import affinity as af
 
 class SensorData(af.Dataset):
   """Experimental data from Top Secret Sensor Tech."""
-  exp_id: af.ScalarI32("FK to `experiment`")
   t: af.VectorF32("elapsed time")
   channel: af.VectorI8("channel number")
-  is_laser_on: af.VectorBool("are the lights on?")
   voltage: af.VectorF64("something we measured")
+  is_laser_on: af.VectorBool("are the lights on?")
+  exp_id: af.ScalarI32("FK to `experiment`")
+```
 
+This working concept covers the following:
+
+```python
 data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
 data = SensorData.build(...)        # ⚒️ build from external source, validate types
