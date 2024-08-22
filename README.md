@@ -67,6 +67,14 @@ CREATE EXTERNAL TABLE [IF NOT EXISTS]
 
 Affinity exists to fill (some of) these gaps.
 
+## Tales of Data Annotation Issues Gone Terribly Wrong
+
+Probably the single greatest source of problems is unspecified units of measure, with numerous fatal and near-fatal engineering and medical disasters.
+
+- [When NASA Lost a Spacecraft Due to a Metric Math Mistake](https://www.simscale.com/blog/nasa-mars-climate-orbiter-metric/)
+
+Got your own? Share in [discussions](https://github.com/liquidcarbon/affinity/discussions)!
+
 ## Future
 
 - nested data
