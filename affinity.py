@@ -114,6 +114,12 @@ class Dataset:
         return {key: self.__class__.__dict__[key].comment for key in self.__dict__}
 
     @property
+    def comments(self):
+        dd = self.data_dict
+        dd.update({self.__class__.__name__: self.__class__.__doc__})
+        return dd
+
+    @property
     def df(self) -> pd.DataFrame:
         return pd.DataFrame(self.__dict__)
 

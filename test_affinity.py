@@ -43,6 +43,7 @@ def test_empty_dataset():
 
 def test_simple_dataset():
     class aDataset(af.Dataset):
+        """A well-documented dataset."""
         v1 = af.Vector(np.float32, comment="first")
         v2 = af.Scalar(np.int8, comment="second")
     data = aDataset(
@@ -51,6 +52,7 @@ def test_simple_dataset():
     )
     assert len(data) == 2
     assert data.data_dict == {"v1": "first", "v2": "second"}
+    assert data.comments.get("aDataset") == "A well-documented dataset."
     expected_df = pd.DataFrame({
         "v1": [0., 1.],
         "v2": [2, 2]
