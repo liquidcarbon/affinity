@@ -25,6 +25,16 @@ data.to_excel(...)                  # ⚒️ annotations on separate sheet
 data.to_parquet(...)                # ⚒️ data types, annotations in Parquet metadata
 ```
 
+## How it works
+
+Affinity does not replace any dataframe library, but can be used with any package you like.  
+
+The `af.Dataset` is a base class that defines the behavior of children data classes:
+- the concise class definition carries the annotations and expected data types
+- subclass attributes (vectors) can be represented by any array (numpy, pandas, polars, arrow)
+- subclass instances can be constructed from any scalars or iterables
+- subclass instances can be cast into any dataframe flavor, and exported to any format that your favorite dataframes support
+
 ## Motivation
 
 Once upon a time, relational databases met object-oriented programming, and gave rise to object-relational mapping. Django ORM and SQLAlchemy unlocked the ability to represent database entries as python objects, with attributes for columns and relations, and methods for create-read-update-delete (CRUD) transactions.  These scalar data elements (numbers, strings, booleans) carry a lot of meaning: someone's name or email or account balance, amounts of available items, time of important events.  They change relatively frequently, one row at a time, and live in active, fast memory (RAM).
