@@ -37,6 +37,7 @@ def test_empty_dataset():
     class aDataset(af.Dataset):
         v = af.Vector(np.int8)
     data = aDataset()
+    data.alias = "this adds a new key to data.__dict__; data.dict not affected"
     assert data.df.shape == (0, 1)
     assert data.df.dtypes["v"] == np.int8
 

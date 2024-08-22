@@ -108,10 +108,21 @@ class Dataset:
 
     def __len__(self):
         return len(next(iter(self.__dict__.values())))
+    
+    def sql(self, query):
+        """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
+        raise NotImplementedError
+
+    @property
+    def dict(self):
+        """Distinct from __dict__: only includes attributes defined in the class."""
+        return {
+            k: v for k, v in self.__dict__.items() if k in self.__class__.__dict__
+        }
 
     @property
     def data_dict(self):
-        return {key: self.__class__.__dict__[key].comment for key in self.__dict__}
+        return {k: self.__class__.__dict__[k].comment for k in self.dict}
 
     @property
     def comments(self):
@@ -121,7 +132,7 @@ class Dataset:
 
     @property
     def df(self) -> pd.DataFrame:
-        return pd.DataFrame(self.__dict__)
+        return pd.DataFrame(self.dict)
 
 
 class VectorUntyped(Vector):

@@ -21,8 +21,7 @@ data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
 data = SensorData.build(...)        # ⚒️ build from external source, validate types
 data.df                             # ✅ view as dataframe (Pandas/Polars/Arrow)
-data.sql(query)                     # ⚒️ query data (DuckDB)
-data.data_dict                      # ✅ column and table comments
+data.comments                       # ✅ column and table comments
 data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
 data.to_parquet(...)                # ⚒️ data types, annotations in Parquet metadata
