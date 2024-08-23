@@ -12,7 +12,7 @@ class Descriptor:
     def __get__(self, instance, owner):
         return self if not instance else instance.__dict__[self.name]
     def __set__(self, instance, values):
-        _values = values or []
+        _values = [] if values is None else values
         try:
             self._values = self.array_class(_values, dtype=self.dtype)
         except OverflowError as e:
@@ -110,6 +110,19 @@ class Dataset:
         
         if len(self.origin) == 1:  # only after direct __init__
             self.origin["source"] = "manual"
+
+    @classmethod
+    def from_source(cls, file=None, dataframe=None, query=None, **kwargs):
+        if isinstance(dataframe, (pd.DataFrame,)):
+            return cls.from_dataframe(cls, dataframe, **kwargs)
+    
+    @classmethod
+    def from_dataframe(cls, dataframe: pd.DataFrame, **kwargs):
+        instance = cls()
+        for k in instance.dict:
+            setattr(instance, k, dataframe[k])
+        instance.origin["source"] = f"dataframe, shape {dataframe.shape}"
+        return instance
 
     def __len__(self):
         return len(next(iter(self.dict.values())))

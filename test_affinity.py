@@ -60,3 +60,21 @@ def test_simple_dataset():
         "v2": [2, 2]
     }).astype({"v1": np.float32, "v2": np.int8})
     pd.testing.assert_frame_equal(data.df, expected_df)
+
+def test_from_dataframe():
+    class aDataset(af.Dataset):
+        v1 = af.VectorBool()
+        v2 = af.VectorF32()
+        v3 = af.VectorI16()
+    source_df = pd.DataFrame({
+        "v1": [1, 0],
+        "v2": [0., 1.],
+        "v3": [None, -1],
+    })
+    data = aDataset.from_dataframe(source_df)
+    assert data.origin.get("source") == "dataframe, shape (2, 3)"
+    default_dtypes = source_df.dtypes
+    desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
+    pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))   
+    with pytest.raises(AssertionError):
+        pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
