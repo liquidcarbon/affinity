@@ -4,8 +4,27 @@ Module for creating well-documented datasets, with types and annotations.
 
 import numpy as np
 import pandas as pd
+from importlib import import_module
 from time import time
-from typing import Union
+from typing import TYPE_CHECKING, Optional, Union
+
+
+def try_import(module) -> Optional[object]:
+    try:
+        return import_module(module)
+    except ImportError:
+        print("{module} not found in the current environment")
+        return
+
+
+if TYPE_CHECKING:
+    import duckdb  # type: ignore
+    import pyarrow as pa  # type: ignore
+    import polars as pl  # type: ignore
+else:
+    duckdb = try_import("duckdb")
+    pa = try_import("pyarrow")
+    pl = try_import("polars")      
 
 
 class Descriptor:
@@ -46,10 +65,13 @@ class Vector(Descriptor):
         self.comment = comment
         self.array_class = array_class
         self.__set__(None, values)
+
     def __getitem__(self, key):
         return self._values[key]
+    
     def __setitem__(self, key, value):
         self._values[key] = value
+
     def __len__(self):
         return self.size
 
@@ -59,6 +81,7 @@ class Vector(Descriptor):
 
     def __repr__(self):
         return "\n".join([self.info, repr(self._values)])
+    
     def __str__(self):
         return self.__repr__()
 
@@ -124,7 +147,7 @@ class Dataset:
         instance.origin["source"] = f"dataframe, shape {dataframe.shape}"
         return instance
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(next(iter(self.dict.values())))
     
     def sql(self, query):
@@ -132,18 +155,18 @@ class Dataset:
         raise NotImplementedError
 
     @property
-    def dict(self):
+    def dict(self) -> dict:
         """Distinct from __dict__: only includes attributes defined in the class."""
         return {
             k: v for k, v in self.__dict__.items() if k in self.__class__.__dict__
         }
 
     @property
-    def data_dict(self):
+    def data_dict(self) -> dict:
         return {k: self.__class__.__dict__[k].comment for k in self.dict}
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict:
         return {
             **self.data_dict,
             self.__class__.__name__: self.__class__.__doc__,
@@ -153,6 +176,10 @@ class Dataset:
     @property
     def df(self) -> pd.DataFrame:
         return pd.DataFrame(self.dict)
+
+    @property
+    def pl(self) -> "pl.DataFrame":
+        return pl.DataFrame(self.dict)
 
 
 class VectorUntyped(Vector):
