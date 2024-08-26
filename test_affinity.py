@@ -53,7 +53,7 @@ def test_simple_dataset():
     )
     assert len(data) == 2
     assert data.data_dict == {"v1": "first", "v2": "second"}
-    assert data.metadata.get("aDataset") == "A well-documented dataset."
+    assert data.metadata.get("table_comment") == "A well-documented dataset."
     assert data.metadata.get("source") == "manual"
     expected_df = pd.DataFrame({
         "v1": [0., 1.],

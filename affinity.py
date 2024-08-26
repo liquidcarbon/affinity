@@ -146,6 +146,13 @@ class Dataset:
             setattr(instance, k, dataframe[k])
         instance.origin["source"] = f"dataframe, shape {dataframe.shape}"
         return instance
+    
+    @classmethod
+    def from_sql(cls, query: str, **kwargs):
+        instance = cls()
+        instance
+        instance.origin["source"] = f"query: {query}"
+        return instance
 
     def __len__(self) -> int:
         return len(next(iter(self.dict.values())))
@@ -169,8 +176,8 @@ class Dataset:
     def metadata(self) -> dict:
         """The metadata for the dataclass instance."""
         return {
+            "table_comment": self.__class__.__doc__,
             **self.data_dict,
-            self.__class__.__name__: self.__class__.__doc__,
             **self.origin
         }
 
