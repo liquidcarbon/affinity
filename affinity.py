@@ -13,7 +13,7 @@ def try_import(module) -> Optional[object]:
     try:
         return import_module(module)
     except ImportError:
-        print("{module} not found in the current environment")
+        print(f"{module} not found in the current environment")
         return
 
 
@@ -135,7 +135,7 @@ class Dataset:
             self.origin["source"] = "manual"
 
     @classmethod
-    def from_source(cls, file=None, dataframe=None, query=None, **kwargs):
+    def build(cls, file=None, dataframe=None, query=None, **kwargs):
         if isinstance(dataframe, (pd.DataFrame,)):
             return cls.from_dataframe(cls, dataframe, **kwargs)
     
@@ -167,10 +167,11 @@ class Dataset:
 
     @property
     def metadata(self) -> dict:
+        """The metadata for the dataclass instance."""
         return {
             **self.data_dict,
             self.__class__.__name__: self.__class__.__doc__,
-            "origin": self.origin
+            **self.origin
         }
 
     @property
@@ -178,42 +179,46 @@ class Dataset:
         return pd.DataFrame(self.dict)
 
     @property
+    def pa(self) -> "pa.Table":
+        metadata = {str(k): str(v) for k, v in self.metadata.items()}
+        return pa.table(self.dict, metadata=metadata)
+
+    @property
     def pl(self) -> "pl.DataFrame":
         return pl.DataFrame(self.dict)
 
-
 class VectorUntyped(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(object, values, comment, array_class)
 
 class VectorI8(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(pd.Int8Dtype(), values, comment, array_class)
 
 class VectorBool(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__("boolean", values, comment, array_class)
 
 class VectorI16(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(pd.Int16Dtype(), values, comment, array_class)
 
 class VectorI32(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(pd.Int32Dtype(), values, comment, array_class)
 
 class VectorI64(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(pd.Int64Dtype(), values, comment, array_class)
 
 class VectorF16(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(np.float16, values, comment, array_class)
 
 class VectorF32(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(np.float32, values, comment, array_class)
 
 class VectorF64(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.array):
+    def __init__(self, values=None, comment=None, array_class=pd.Series):
         super().__init__(np.float64, values, comment, array_class)

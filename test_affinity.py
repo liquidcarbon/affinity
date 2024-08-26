@@ -54,7 +54,7 @@ def test_simple_dataset():
     assert len(data) == 2
     assert data.data_dict == {"v1": "first", "v2": "second"}
     assert data.metadata.get("aDataset") == "A well-documented dataset."
-    assert data.metadata.get("origin").get("source") == "manual"
+    assert data.metadata.get("source") == "manual"
     expected_df = pd.DataFrame({
         "v1": [0., 1.],
         "v2": [2, 2]
@@ -78,3 +78,23 @@ def test_from_dataframe():
     pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))   
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
+
+
+def test_to_pyarrow():
+    class aDataset(af.Dataset):
+        v1 = af.VectorBool(comment="is that so?")
+        v2 = af.VectorF32()
+        v3 = af.VectorI16()
+    data = aDataset(v1=[True], v2=[1/2], v3=[999])
+    arrow_table = data.pa
+    assert arrow_table.schema.metadata[b"v1"] == b"is that so?"
+
+
+def test_to_polars():
+    class aDataset(af.Dataset):
+        v1 = af.VectorBool()
+        v2 = af.VectorF32()
+        v3 = af.VectorI16()
+    data = aDataset(v1=[True], v2=[1/2], v3=[999])
+    polars_df = data.pl
+    assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
