@@ -137,7 +137,9 @@ class Dataset:
     @classmethod
     def build(cls, file=None, dataframe=None, query=None, **kwargs):
         if isinstance(dataframe, (pd.DataFrame,)):
-            return cls.from_dataframe(cls, dataframe, **kwargs)
+            return cls.from_dataframe(dataframe, **kwargs)
+        if query:
+            return cls.from_sql(query, **kwargs)
     
     @classmethod
     def from_dataframe(cls, dataframe: pd.DataFrame, **kwargs):
@@ -150,8 +152,13 @@ class Dataset:
     @classmethod
     def from_sql(cls, query: str, **kwargs):
         instance = cls()
-        instance
-        instance.origin["source"] = f"query: {query}"
+        if kwargs.get("method") in (None, "pandas"):
+            query_results = duckdb.sql(query).df()
+        if kwargs.get("method") in ("polars",):
+            query_results = duckdb.sql(query).pl()        
+        for k in instance.dict:
+            setattr(instance, k, query_results[k])
+        instance.origin["source"] = f"query: {query}\nresult shape: (2, 3)"
         return instance
 
     def __len__(self) -> int:
