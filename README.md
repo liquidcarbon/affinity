@@ -10,11 +10,11 @@ import affinity as af
 
 class SensorData(af.Dataset):
   """Experimental data from Top Secret Sensor Tech."""
-  t: af.VectorF32("elapsed time (sec)")
-  channel: af.VectorI8("channel number (left to right)")
-  voltage: af.VectorF64("something we measured (mV)")
-  is_laser_on: af.VectorBool("are the lights on?")
-  exp_id: af.ScalarI32("FK to `experiment`")
+  t = af.VectorF32("elapsed time (sec)")
+  channel = af.VectorI8("channel number (left to right)")
+  voltage = af.VectorF64("something we measured (mV)")
+  is_laser_on = af.VectorBool("are the lights on?")
+  exp_id = af.ScalarI32("FK to `experiment`")
 
 # this working concept covers the following:
 data = SensorData()                 # ✅ empty dataset
@@ -26,6 +26,33 @@ data.origin                         # ✅ creation metadata, some data provenanc
 data.to_parquet(...)                # ✅ data.metadata -> Parquet metadata
 data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
+```
+
+## Parquet Round-Trip
+
+```python
+import affinity as af
+
+class IsotopeData(af.Dataset):
+    """NIST Atomic Weights & Isotopic Compositions.[^1]
+  
+    [^1] https://www.nist.gov/pml/atomic-weights-and-isotopic-compositions-relative-atomic-masses
+    """
+    symbol = af.VectorUntyped("Element")
+    z = af.VectorI8("Atomic Number (Z)")
+    mass = af.VectorF64("Isotope Mass (Da)")
+    abundance = af.VectorF64("Relative natural abundance")
+
+url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
+query = f"""
+SELECT
+    Symbol as symbol,
+    Number as z,
+    Mass as mass,
+    Abundance as abundance,
+FROM '{url}'
+"""
+data = IsotopeData.build(query=query)
 ```
 
 ## How it works
