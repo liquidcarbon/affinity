@@ -42,6 +42,13 @@ def test_empty_dataset():
     assert data.df.dtypes["v"] == np.int8
 
 
+def test_wrong_dataset_declaration():
+    class aDataset(af.Dataset):
+        v: af.Vector(np.int8)  # type: ignore
+        # v = af.Vector(np.int8)  # the correct way
+    with pytest.raises(ValueError):
+        data = aDataset()
+
 def test_simple_dataset():
     class aDataset(af.Dataset):
         """A well-documented dataset."""
