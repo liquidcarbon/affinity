@@ -101,16 +101,6 @@ def test_from_query():
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
 
 
-def test_to_pyarrow():
-    class aDataset(af.Dataset):
-        v1 = af.VectorBool(comment="is that so?")
-        v2 = af.VectorF32()
-        v3 = af.VectorI16()
-    data = aDataset(v1=[True], v2=[1/2], v3=[999])
-    arrow_table = data.pa
-    assert arrow_table.schema.metadata[b"v1"] == b"is that so?"
-
-
 def test_to_polars():
     class aDataset(af.Dataset):
         v1 = af.VectorBool()
@@ -119,3 +109,52 @@ def test_to_polars():
     data = aDataset(v1=[True], v2=[1/2], v3=[999])
     polars_df = data.pl
     assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
+
+
+def test_to_pyarrow():
+    class aDataset(af.Dataset):
+        v1 = af.VectorBool()
+        v2 = af.VectorF32()
+        v3 = af.VectorI16()
+    data = aDataset(v1=[True], v2=[1/2], v3=[999])
+    arrow_table = data.arrow
+    assert all(
+        key in arrow_table.schema.metadata.keys()
+        for key in [b"v1", b"v2", b"v3"]
+    )
+
+
+def test_to_parquet():
+    class aDataset(af.Dataset):
+        """Delightful data."""
+        v1 = af.VectorBool(comment="is that so?")
+        v2 = af.VectorF32(comment="float like a butterfly")
+        v3 = af.VectorI16(comment="int like a three")
+    data = aDataset(v1=[True], v2=[1/2], v3=[3])
+    from pathlib import Path
+    test_file = Path("test.parquet")
+    data.to_parquet(test_file)
+    class KeyValueMetadata(af.Dataset):
+        """Stores results of reading Parquet metadata."""
+        file_name = af.VectorUntyped()
+        key = af.VectorUntyped()
+        value = af.VectorUntyped()
+    test_file_metadata = KeyValueMetadata.from_sql(
+        f"""
+        SELECT
+            file_name,
+            DECODE(key) AS key,
+            DECODE(value) AS value,
+        FROM parquet_kv_metadata('{test_file}')
+        WHERE DECODE(key) != 'ARROW:schema'
+        """,
+        method="polars"
+    )
+    test_file.unlink()
+    assert all(
+        value in test_file_metadata.value.values
+        for value in [
+            "is that so?", "float like a butterfly", "int like a three",
+            "Delightful data.", "manual"
+        ]
+    )

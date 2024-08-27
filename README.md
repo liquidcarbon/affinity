@@ -19,13 +19,13 @@ class SensorData(af.Dataset):
 # this working concept covers the following:
 data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
-data = SensorData.build(...)        # ⚒️ build from external source, validate types
-data.df                             # ✅ view as dataframe (Pandas/Polars/Arrow)
+data = SensorData.build(...)        # ✅ build from a source (dataframes, DuckDB) with type casting
+data.df  # .pl / .arrow             # ✅ view as dataframe (Pandas/Polars/Arrow)
 data.metadata                       # ✅ annotations (data dict with column and dataset comments), origin
 data.origin                         # ✅ creation metadata, some data provenance
+data.to_parquet(...)                # ✅ data.metadata -> Parquet metadata
 data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
-data.to_parquet(...)                # ⚒️ data.metadata -> Parquet metadata
 ```
 
 ## How it works

@@ -16,15 +16,16 @@ def try_import(module) -> Optional[object]:
         print(f"{module} not found in the current environment")
         return
 
-
 if TYPE_CHECKING:
     import duckdb  # type: ignore
     import pyarrow as pa  # type: ignore
+    import pyarrow.parquet as pq  # type: ignore
     import polars as pl  # type: ignore
 else:
     duckdb = try_import("duckdb")
-    pa = try_import("pyarrow")
     pl = try_import("polars")      
+    pa = try_import("pyarrow")
+    pq = try_import("pyarrow.parquet")
 
 
 class Descriptor:
@@ -135,11 +136,11 @@ class Dataset:
             self.origin["source"] = "manual"
 
     @classmethod
-    def build(cls, file=None, dataframe=None, query=None, **kwargs):
-        if isinstance(dataframe, (pd.DataFrame,)):
-            return cls.from_dataframe(dataframe, **kwargs)
+    def build(cls, query=None, dataframe=None, **kwargs):
         if query:
             return cls.from_sql(query, **kwargs)
+        if isinstance(dataframe, (pd.DataFrame,)):
+            return cls.from_dataframe(dataframe, **kwargs)
     
     @classmethod
     def from_dataframe(cls, dataframe: pd.DataFrame, **kwargs):
@@ -167,6 +168,10 @@ class Dataset:
     def sql(self, query):
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
         raise NotImplementedError
+    
+    def to_parquet(self, path):
+        pq.write_table(self.arrow, path)
+        return
 
     @property
     def dict(self) -> dict:
@@ -193,13 +198,14 @@ class Dataset:
         return pd.DataFrame(self.dict)
 
     @property
-    def pa(self) -> "pa.Table":
+    def arrow(self) -> "pa.Table":
         metadata = {str(k): str(v) for k, v in self.metadata.items()}
         return pa.table(self.dict, metadata=metadata)
 
     @property
     def pl(self) -> "pl.DataFrame":
         return pl.DataFrame(self.dict)
+
 
 class VectorUntyped(Vector):
     def __init__(self, values=None, comment=None, array_class=pd.Series):
