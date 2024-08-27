@@ -111,6 +111,8 @@ print(source.fetchall()[-1][-1].decode())
 ```python
 data_from_parquet = IsotopeData.build(query="FROM 'isotopes.parquet'")
 assert data_from_sql == data_from_parquet
+print(data_from_parquet.pl.dtypes)
+# [String, Int8, Float64, Float64]
 ```
 
 ## How it works
