@@ -5,6 +5,8 @@ What your data means should always travel together with the data.
 
 ## Usage
 
+For now, just copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
+
 ```python
 import affinity as af
 
