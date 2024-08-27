@@ -30,6 +30,10 @@ data.to_excel(...)                  # ⚒️ annotations on separate sheet
 
 ## Parquet Round-Trip
 
+1) declare class
+2) build class instance from a URL using DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), renaming and retyping the fields on the fly
+3) write to Parquet (with metadata)
+
 ```python
 import affinity as af
 
@@ -44,7 +48,7 @@ class IsotopeData(af.Dataset):
     abundance = af.VectorF64("Relative natural abundance")
 
 url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
-query = f"""
+query_without_rename = f"""
 SELECT
     Symbol as symbol,
     Number as z,
@@ -52,7 +56,61 @@ SELECT
     Abundance as abundance,
 FROM '{url}'
 """
-data = IsotopeData.build(query=query)
+data_from_sql = IsotopeData.build(query="FROM '{url}'", rename=True)
+data_from_sql.to_parquet("test.parquet")
+```
+
+4) inspect metadata using PyArrow:
+
+```python
+import pyarrow.parquet as pq
+pf = pq.ParquetFile("isotopes.parquet")
+pf.schema_arrow
+
+# symbol: string
+# z: int8
+# mass: double
+# abundance: double
+# -- schema metadata --
+# table_comment: 'NIST Atomic Weights & Isotopic Compositions.[^1]
+  
+#     [' + 97
+# symbol: 'Element'
+# z: 'Atomic Number (Z)'
+# mass: 'Isotope Mass (Da)'
+# abundance: 'Relative natural abundance'
+# created_ts: '1724787055721'
+# source: 'dataframe, shape (354, 4)
+# query:
+
+# SELECT
+#     Symbol as symbol,
+#  ' + 146
+```
+
+5) inspect metadata using DuckDB
+
+```python
+import duckdb
+source = duckdb.sql("FROM parquet_kv_metadata('isotopes.parquet') WHERE key='source'")
+print(source.fetchall()[-1][-1].decode())
+
+# dataframe, shape (354, 4)
+# query:
+
+# SELECT
+#     Symbol as symbol,
+#     Number as z,
+#     Mass as mass,
+#     Abundance as abundance,
+# FROM 'https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv'
+```
+
+6) read Parquet:
+
+```python
+data_from_parquet = IsotopeData.build(query="FROM 'isotopes.parquet'")
+assert data_from_sql == data_from_parquet
 ```
 
 ## How it works

@@ -78,6 +78,8 @@ class Vector(Descriptor):
 
     # Delegate array methods
     def __getattr__(self, attr):
+        if attr in ("_values",):
+            return self._values
         return getattr(self._values, attr)
 
     def __repr__(self):
@@ -135,31 +137,42 @@ class Dataset:
         if len(self.origin) == 1:  # only after direct __init__
             self.origin["source"] = "manual"
 
+    def __eq__(self, other):
+        return self.df.equals(other.df)
+    
     @classmethod
     def build(cls, query=None, dataframe=None, **kwargs):
+        """Build from DuckDB query or a dataframe.
+        
+        Build kwargs:
+        - rename: how to handle source with differently named fields:
+          None|False: field names in source must match class declaration
+          True: fields in source fetched, renamed in same order they're declared
+        """
         if query:
             return cls.from_sql(query, **kwargs)
         if isinstance(dataframe, (pd.DataFrame,)):
             return cls.from_dataframe(dataframe, **kwargs)
     
     @classmethod
-    def from_dataframe(cls, dataframe: pd.DataFrame, **kwargs):
+    def from_dataframe(cls, dataframe: Union[pd.DataFrame|pl.DataFrame], **kwargs):
         instance = cls()
-        for k in instance.dict:
-            setattr(instance, k, dataframe[k])
+        for i, k in enumerate(instance.dict):
+            if kwargs.get("rename") in (None, False):
+                setattr(instance, k, dataframe[k])
+            else:
+                setattr(instance, k, dataframe[dataframe.columns[i]])
         instance.origin["source"] = f"dataframe, shape {dataframe.shape}"
         return instance
     
     @classmethod
     def from_sql(cls, query: str, **kwargs):
-        instance = cls()
         if kwargs.get("method") in (None, "pandas"):
             query_results = duckdb.sql(query).df()
         if kwargs.get("method") in ("polars",):
             query_results = duckdb.sql(query).pl()        
-        for k in instance.dict:
-            setattr(instance, k, query_results[k])
-        instance.origin["source"] = f"query: {query}\nresult shape: (2, 3)"
+        instance = cls.from_dataframe(query_results, **kwargs)
+        instance.origin["source"] += f"\nquery:\n{query}"
         return instance
 
     def __len__(self) -> int:
@@ -208,37 +221,37 @@ class Dataset:
 
 
 class VectorUntyped(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(object, values, comment, array_class)
 
 class VectorI8(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(pd.Int8Dtype(), values, comment, array_class)
 
 class VectorBool(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__("boolean", values, comment, array_class)
 
 class VectorI16(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(pd.Int16Dtype(), values, comment, array_class)
 
 class VectorI32(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(pd.Int32Dtype(), values, comment, array_class)
 
 class VectorI64(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(pd.Int64Dtype(), values, comment, array_class)
 
 class VectorF16(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(np.float16, values, comment, array_class)
 
 class VectorF32(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(np.float32, values, comment, array_class)
 
 class VectorF64(Vector):
-    def __init__(self, values=None, comment=None, array_class=pd.Series):
+    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
         super().__init__(np.float64, values, comment, array_class)

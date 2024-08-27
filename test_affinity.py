@@ -2,6 +2,8 @@ import affinity as af
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
+
 
 def test_empty_vector_no_dtype():
     with pytest.raises(TypeError):
@@ -49,24 +51,34 @@ def test_wrong_dataset_declaration():
     with pytest.raises(ValueError):
         data = aDataset()
 
-def test_simple_dataset():
-    class aDataset(af.Dataset):
+def test_dataset_with_scalar():
+    class aDatasetVectorScalar(af.Dataset):
         """A well-documented dataset."""
         v1 = af.Vector(np.float32, comment="first")
         v2 = af.Scalar(np.int8, comment="second")
-    data = aDataset(
+    data1 = aDatasetVectorScalar(
         v1 = [0., 1.],
         v2 = 2
     )
-    assert len(data) == 2
-    assert data.data_dict == {"v1": "first", "v2": "second"}
-    assert data.metadata.get("table_comment") == "A well-documented dataset."
-    assert data.metadata.get("source") == "manual"
+    assert len(data1) == 2
+    assert data1.data_dict == {"v1": "first", "v2": "second"}
+    assert data1.metadata.get("table_comment") == "A well-documented dataset."
+    assert data1.metadata.get("source") == "manual"
     expected_df = pd.DataFrame({
         "v1": [0., 1.],
         "v2": [2, 2]
     }).astype({"v1": np.float32, "v2": np.int8})
-    pd.testing.assert_frame_equal(data.df, expected_df)
+    pd.testing.assert_frame_equal(data1.df, expected_df)
+    class aDatasetOnlyVector(af.Dataset):
+        v1 = af.Vector(np.float32, comment="first")
+        v2 = af.Vector(np.int8, comment="second")
+    data2 = aDatasetOnlyVector(
+        v1 = [0., 1.],
+        v2 = [2, 2]
+    )
+    pd.testing.assert_frame_equal(data1.df, data2.df)
+    assert data1 == data2
+
 
 def test_from_dataframe():
     class aDataset(af.Dataset):
@@ -100,7 +112,7 @@ def test_from_query():
         "v3": [None, -1],
     })
     data = aDataset.build(query="FROM source_df")
-    assert data.origin.get("source") == "query: FROM source_df\nresult shape: (2, 3)"
+    assert data.origin.get("source") == "dataframe, shape (2, 3)\nquery:\nFROM source_df"
     default_dtypes = source_df.dtypes
     desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
     pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))   
@@ -131,14 +143,13 @@ def test_to_pyarrow():
     )
 
 
-def test_to_parquet():
+def test_to_parquet_with_metadata():
     class aDataset(af.Dataset):
         """Delightful data."""
         v1 = af.VectorBool(comment="is that so?")
         v2 = af.VectorF32(comment="float like a butterfly")
         v3 = af.VectorI16(comment="int like a three")
     data = aDataset(v1=[True], v2=[1/2], v3=[3])
-    from pathlib import Path
     test_file = Path("test.parquet")
     data.to_parquet(test_file)
     class KeyValueMetadata(af.Dataset):
@@ -155,7 +166,8 @@ def test_to_parquet():
         FROM parquet_kv_metadata('{test_file}')
         WHERE DECODE(key) != 'ARROW:schema'
         """,
-        method="polars"
+        method="polars",
+        field_names="strict"
     )
     test_file.unlink()
     assert all(
@@ -165,3 +177,21 @@ def test_to_parquet():
             "Delightful data.", "manual"
         ]
     )
+
+
+def test_parquet_roundtrip_with_rename():
+    class IsotopeData(af.Dataset):
+        symbol = af.VectorUntyped("Element")
+        z = af.VectorI8("Atomic Number (Z)")
+        mass = af.VectorF64("Isotope Mass (Da)")
+        abundance = af.VectorF64("Relative natural abundance")
+
+    url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
+    with pytest.raises(KeyError):
+        verbatim = IsotopeData.build(query=f"FROM '{url}'")
+    data_from_sql = IsotopeData.build(query=f"FROM '{url}'", rename=True)
+    test_file = Path("test.parquet")
+    data_from_sql.to_parquet(test_file)
+    data_from_parquet = IsotopeData.build(query=f"FROM '{test_file}'")
+    test_file.unlink()
+    assert data_from_sql == data_from_parquet
