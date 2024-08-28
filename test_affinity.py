@@ -35,6 +35,22 @@ def test_typed_vectors():
     v_f64 = af.VectorF64()
     assert v_f64.dtype == np.float64
 
+
+def test_wrong_dataset_declaration():
+    class aDataset(af.Dataset):
+        v: af.Vector(np.int8)  # type: ignore
+        # v = af.Vector(np.int8)  # the correct way
+    with pytest.raises(ValueError):
+        data = aDataset()
+
+
+def test_dataset_with_overflows():
+    class aDataset(af.Dataset):
+        v = af.Vector(np.int8)
+    with pytest.raises(OverflowError):
+        data = aDataset(v=[999])
+
+
 def test_empty_dataset():
     class aDataset(af.Dataset):
         v = af.Vector(np.int8)
@@ -44,12 +60,12 @@ def test_empty_dataset():
     assert data.df.dtypes["v"] == np.int8
 
 
-def test_wrong_dataset_declaration():
+def test_dataset_instantiation_leaves_class_attrs_unmodified():
     class aDataset(af.Dataset):
-        v: af.Vector(np.int8)  # type: ignore
-        # v = af.Vector(np.int8)  # the correct way
-    with pytest.raises(ValueError):
-        data = aDataset()
+        v = af.Vector(np.int8)
+    data = aDataset(v=[42])
+    assert len(aDataset.v) == 0
+
 
 def test_dataset_with_scalar():
     class aDatasetVectorScalar(af.Dataset):

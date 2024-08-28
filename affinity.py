@@ -31,18 +31,22 @@ else:
 class Descriptor:
     def __get__(self, instance, owner):
         return self if not instance else instance.__dict__[self.name]
+    
     def __set__(self, instance, values):
-        _values = [] if values is None else values
         try:
-            self._values = self.array_class(_values, dtype=self.dtype)
+            _values = self.array_class(
+                values if values is not None else [],
+                dtype=self.dtype
+            )
         except OverflowError as e:
             raise e
-        except TypeError:
-            self._values = self.array_class(_values)
-        finally:
-            self.size = len(self._values)
-            if instance is not None:
-                instance.__dict__[self.name] = self._values
+        except Exception as e:  # leaving blanket exception to troubleshoot
+            raise e
+        if instance is None:
+            self._values = _values
+        else:
+            instance.__dict__[self.name] = _values
+
     def __set_name__(self, owner, name):
         self.name = name
 
@@ -78,8 +82,8 @@ class Vector(Descriptor):
 
     # Delegate array methods
     def __getattr__(self, attr):
-        if attr in ("_values",):
-            return self._values
+        # if attr in ("_values",):
+        #     return self._values
         return getattr(self._values, attr)
 
     def __repr__(self):
