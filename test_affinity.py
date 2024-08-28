@@ -15,6 +15,7 @@ def test_empty_vector():
     assert len(v) == 0
     assert repr(v) == "Vector <class 'numpy.int8'> of len 0  # None\narray([], dtype=int8)"
 
+
 def test_typed_vectors():
     v_untyped = af.VectorUntyped()
     assert v_untyped.dtype == object
@@ -34,6 +35,13 @@ def test_typed_vectors():
     assert v_f32.dtype == np.float32
     v_f64 = af.VectorF64()
     assert v_f64.dtype == np.float64
+
+
+def test_dataset_no_attributes():
+    class aDataset(af.Dataset):
+        pass
+    with pytest.raises(ValueError):
+        data = aDataset()
 
 
 def test_wrong_dataset_declaration():
@@ -67,7 +75,16 @@ def test_dataset_instantiation_leaves_class_attrs_unmodified():
     assert len(aDataset.v) == 0
 
 
-def test_dataset_with_scalar():
+def test_dataset_scalar():
+    class aScalarDataset(af.Dataset):
+        v1 = af.Scalar(np.bool_, comment="first")
+        v2 = af.Scalar(np.float16, comment="second")
+    data = aScalarDataset(v1=0, v2=float("-inf"))
+    assert data.v1[-1] == False
+    assert data.v2.dtype == np.float16
+
+
+def test_dataset_scalar_vector():
     class aDatasetVectorScalar(af.Dataset):
         """A well-documented dataset."""
         v1 = af.Vector(np.float32, comment="first")

@@ -120,22 +120,25 @@ class Dataset:
         self.origin = {"created_ts": int(time() * 1000)}
         _sizes = {}
         _vectors = self.__class__.list_vectors()
-        if not _vectors:
-            raise ValueError("no vectors in your dataset")
+        _scalars = self.__class__.list_scalars()
+        if len(_vectors) == 0 and len(_scalars) == 0:
+            raise ValueError("no attributes defined in your dataset")
         for vector_name in _vectors:
             field_data = fields.get(vector_name)
             setattr(self, vector_name, field_data)
             _sizes[vector_name] = len(self.__dict__[vector_name])
-        _max_size = max(_sizes.values())
-        if not all([_max_size == v for v in _sizes.values()]):
-            raise ValueError(f"vectors must be of equal size: {_sizes}")
+        if len(_vectors) > 0:
+            _max_size = max(_sizes.values())
+            if not all([_max_size == v for v in _sizes.values()]):
+                raise ValueError(f"vectors must be of equal size: {_sizes}")
+        else:
+            _max_size = 1
 
-        _scalars = self.__class__.list_scalars()
         for scalar_name in _scalars:
             _value = fields.get(scalar_name)
             _scalar = self.__class__.__dict__[scalar_name]
             _scalar.value = _value
-            _vector_from_scalar = Vector.from_scalar(_scalar, len(self))
+            _vector_from_scalar = Vector.from_scalar(_scalar, _max_size)
             setattr(self, scalar_name, _vector_from_scalar)
         
         if len(self.origin) == 1:  # only after direct __init__
