@@ -72,6 +72,7 @@ def test_empty_dataset():
     class aDataset(af.Dataset):
         v = af.Vector(np.int8)
     data = aDataset()
+    assert data.is_dataset("v") == False
     data.alias = "this adds a new key to data.__dict__ but not to data.dict"
     assert data.df.shape == (0, 1)
     assert data.df.dtypes["v"] == np.int8
@@ -258,3 +259,17 @@ def test_parquet_roundtrip_with_rename():
     data_from_parquet = IsotopeData.build(query=f"FROM '{test_file}'")
     test_file.unlink()
     assert data_from_sql == data_from_parquet
+
+
+def test_nested_dataset():
+    class User(af.Dataset):
+        name = af.ScalarObject("username")
+        attrs = af.VectorObject("user attributes")
+    class Order(af.Dataset):
+        user = af.VectorObject("user")
+        qty = af.VectorI16("quantity")
+    u1 = User(name="Alice", attrs=["adorable", "agreeable"])
+    u2 = User(name="Brent", attrs=["bland", "broke"])
+    o1 = Order(user=[u1, u2], qty=[3, 5])
+    assert o1.is_dataset("user") == True
+    assert o1.is_dataset("qty") == False

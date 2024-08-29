@@ -208,6 +208,13 @@ class Dataset:
             lines.append(f"{k} = {v}".replace(", '...',", " ..."))
         return "\n".join(lines)
  
+    def is_dataset(self, key):
+        attr = getattr(self, key, None)
+        if attr is None or len(attr) == 0:
+            return False
+        else:
+            return all(isinstance(v, Dataset) for v in attr)
+
     def sql(self, query):
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
         raise NotImplementedError
@@ -241,13 +248,16 @@ class Dataset:
 
     @property
     def df(self) -> pd.DataFrame:
+        # _dict = {k: v.dict if self.is_dataset(k) else v for k, v in self}
+        # return pd.DataFrame(_dict)
         return pd.DataFrame(dict(self))
+
     
     @property
     def df4(self) -> pd.DataFrame:
         if len(self) > 4:
-            df = self.df.iloc[[0, 1, -2, -1], :].copy()
-            df.loc[1.5] = "..."
+            df = self.df.iloc[[0, 1, -2, -1], :]
+            df.loc[1.5] = "..."  # fake spacer row
             return df.sort_index()
         else:
             return self.df
