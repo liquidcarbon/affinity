@@ -12,7 +12,7 @@ For now, just copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbo
 ```python
 import affinity as af
 
-class SensorData(af.Dataset):data definition
+class SensorData(af.Dataset):
   """Experimental data from Top Secret Sensor Tech."""
   t = af.VectorF32("elapsed time (sec)")
   channel = af.VectorI8("channel number (left to right)")
@@ -36,9 +36,9 @@ data.to_excel(...)                  # ⚒️ annotations on separate sheet
 ## How it works
 
 The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the behavior of children data classes:
-- the concise class definition carries the expected data types and descriptions
+- concise class declaration sets the expected dtypes and descriptions for each attribute (column)
 - class attributes can be represented by any array (default: `pd.Series` because it handles nullable integers well; available: numpy, polars, arrow)
-- class instances can handlesbe constructed from any scalars or iterables
+- class instances can be constructed from any scalars or iterables
 - class instances can be cast into any dataframe flavor, and all their methods are available
 
 
@@ -48,7 +48,8 @@ Affinity makes class declaration as concise as possible.
 All you need to create a data class are typed classes and comments explaining what the fields mean.
 
 #### 1. Declare class
-```
+
+```python
 import affinity as af
 
 class IsotopeData(af.Dataset):
@@ -108,6 +109,8 @@ data_from_sql.to_parquet("test.parquet")  # requires PyArrow
 
 #### 4. Inspect metadata using PyArrow:
 
+The schema metadata as shown here is truncated; full-length keys and values are in `pf.schema_arrow.metadata`.
+
 ```python
 import pyarrow.parquet as pq
 pf = pq.ParquetFile("isotopes.parquet")
@@ -135,6 +138,8 @@ pf.schema_arrow
 ```
 
 #### 5. Inspect metadata using DuckDB
+
+DuckDB provides several functions for [querying Parquet metadata](https://duckdb.org/docs/data/parquet/metadata.html).  We're specifically interested in key-value metadata, where both keys and values are of type `BLOB`.  It can be decoded on the fly using `SELECT DECODE(key), DECODE(value) FROM parquet_kv_metadata(...)`, or like so:
 
 ```python
 import duckdb
