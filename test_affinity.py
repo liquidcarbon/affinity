@@ -16,6 +16,13 @@ def test_empty_vector():
     assert repr(v) == "Vector <class 'numpy.int8'> of len 0  # None\narray([], dtype=int8)"
 
 
+def test_vector_from_scalar():
+    s = af.Scalar(np.bool_, 1)
+    v = af.Vector.from_scalar(s)
+    assert len(v) == 1
+    assert v.scalar == True
+
+
 def test_typed_vectors():
     v_untyped = af.VectorUntyped()
     assert v_untyped.dtype == object
@@ -82,6 +89,7 @@ def test_dataset_scalar():
     data = aScalarDataset(v1=0, v2=float("-inf"))
     assert data.v1[-1] == False
     assert data.v2.dtype == np.float16
+    assert data._scalars == dict(v1=0, v2=float("-inf"))
 
 
 def test_dataset_scalar_vector():
@@ -212,6 +220,7 @@ def test_to_parquet_with_metadata():
     )
 
 
+# @pytest.mark.skip(reason="The web query takes a couple secounds")
 def test_parquet_roundtrip_with_rename():
     class IsotopeData(af.Dataset):
         symbol = af.VectorUntyped("Element")

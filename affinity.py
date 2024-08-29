@@ -63,7 +63,9 @@ class Vector(Descriptor):
     @classmethod
     def from_scalar(cls, scalar: Scalar, length=1):
         _value = [] if (not length or scalar.value is None) else [scalar.value]*length
-        return cls(scalar.dtype, _value, scalar.comment, scalar.array_class)
+        instance = cls(scalar.dtype, _value, scalar.comment, scalar.array_class)
+        instance.scalar = scalar.value
+        return instance
 
     def __init__(self, dtype, values=None, comment=None, array_class=np.array):
         self.dtype = dtype
@@ -82,8 +84,6 @@ class Vector(Descriptor):
 
     # Delegate array methods
     def __getattr__(self, attr):
-        # if attr in ("_values",):
-        #     return self._values
         return getattr(self._values, attr)
 
     def __repr__(self):
@@ -103,12 +103,12 @@ class Dataset:
     """Base class for typed, annotated datasets."""
     
     @classmethod
-    def list_scalars(cls):
-        return [k for k,v in cls.__dict__.items() if isinstance(v, Scalar)]
+    def get_scalars(cls):
+        return {k: None for k,v in cls.__dict__.items() if isinstance(v, Scalar)}
 
     @classmethod
-    def list_vectors(cls):
-        return [k for k,v in cls.__dict__.items() if isinstance(v, Vector)]
+    def get_vectors(cls):
+        return {k: None for k,v in cls.__dict__.items() if isinstance(v, Vector)}
 
     def __init__(self, **fields: Union[Scalar|Vector]):
         """Create dataset, dynamically setting field values.
@@ -119,27 +119,28 @@ class Dataset:
         
         self.origin = {"created_ts": int(time() * 1000)}
         _sizes = {}
-        _vectors = self.__class__.list_vectors()
-        _scalars = self.__class__.list_scalars()
-        if len(_vectors) == 0 and len(_scalars) == 0:
+        self._vectors = self.__class__.get_vectors()
+        self._scalars = self.__class__.get_scalars()
+        if len(self._vectors) == 0 and len(self._scalars) == 0:
             raise ValueError("no attributes defined in your dataset")
-        for vector_name in _vectors:
+        for vector_name in self._vectors:
             field_data = fields.get(vector_name)
             setattr(self, vector_name, field_data)
             _sizes[vector_name] = len(self.__dict__[vector_name])
-        if len(_vectors) > 0:
+        if len(self._vectors) > 0:
             _max_size = max(_sizes.values())
             if not all([_max_size == v for v in _sizes.values()]):
                 raise ValueError(f"vectors must be of equal size: {_sizes}")
         else:
             _max_size = 1
 
-        for scalar_name in _scalars:
+        for scalar_name in self._scalars:
             _value = fields.get(scalar_name)
             _scalar = self.__class__.__dict__[scalar_name]
             _scalar.value = _value
             _vector_from_scalar = Vector.from_scalar(_scalar, _max_size)
             setattr(self, scalar_name, _vector_from_scalar)
+            self._scalars[scalar_name] = _value
         
         if len(self.origin) == 1:  # only after direct __init__
             self.origin["source"] = "manual"
@@ -164,7 +165,7 @@ class Dataset:
     @classmethod
     def from_dataframe(cls, dataframe: Union[pd.DataFrame|pl.DataFrame], **kwargs):
         instance = cls()
-        for i, k in enumerate(instance.dict):
+        for i, k in enumerate(dict(instance)):
             if kwargs.get("rename") in (None, False):
                 setattr(instance, k, dataframe[k])
             else:
@@ -183,8 +184,15 @@ class Dataset:
         return instance
 
     def __len__(self) -> int:
-        return len(next(iter(self.dict.values())))
-    
+        return len(next(iter(self)))
+
+    def __iter__(self):
+        """Like __dict__ but only yields attrs defined in the class."""
+        yield from (
+            (k, v) for k, v in self.__dict__.items()
+            if k in self.__class__.__dict__
+        )
+ 
     def sql(self, query):
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
         raise NotImplementedError
@@ -195,14 +203,11 @@ class Dataset:
 
     @property
     def dict(self) -> dict:
-        """Distinct from __dict__: only includes attributes defined in the class."""
-        return {
-            k: v for k, v in self.__dict__.items() if k in self.__class__.__dict__
-        }
+        return
 
     @property
     def data_dict(self) -> dict:
-        return {k: self.__class__.__dict__[k].comment for k in self.dict}
+        return {k: self.__class__.__dict__[k].comment for k, v in self}
 
     @property
     def metadata(self) -> dict:
@@ -215,16 +220,16 @@ class Dataset:
 
     @property
     def df(self) -> pd.DataFrame:
-        return pd.DataFrame(self.dict)
+        return pd.DataFrame(dict(self))
 
     @property
     def arrow(self) -> "pa.Table":
         metadata = {str(k): str(v) for k, v in self.metadata.items()}
-        return pa.table(self.dict, metadata=metadata)
-
+        return pa.table(dict(self), metadata=metadata)
+    
     @property
     def pl(self) -> "pl.DataFrame":
-        return pl.DataFrame(self.dict)
+        return pl.DataFrame(dict(self))
 
 
 class VectorUntyped(Vector):
