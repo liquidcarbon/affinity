@@ -222,8 +222,9 @@ class Dataset:
     
     @property
     def dict(self) -> dict:
-        """Distinct from __dict__ and __iter__, returns scalars as scalars."""
-        return dict(self, **self._scalars)
+        """JSON-like dict, with scalars as scalars and vectors as lists."""
+        _dict = self.df.to_dict("list")
+        return {**_dict, **self._scalars}
 
     @property
     def data_dict(self) -> dict:

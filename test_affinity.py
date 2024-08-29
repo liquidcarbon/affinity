@@ -73,7 +73,7 @@ def test_empty_dataset():
         v = af.Vector(np.int8)
     data = aDataset()
     data.alias = "this adds a new key to data.__dict__ but not to data.dict"
-    assert data.df.shape == (0, 1)  # constructed from `data.dict`
+    assert data.df.shape == (0, 1)
     assert data.df.dtypes["v"] == np.int8
 
 
@@ -105,10 +105,15 @@ def test_dataset_scalar_vector():
         v2 = 2,
         v3 = range(6)
     )
-
     assert len(data1) == 6
     assert data1.shape == (6, 3)
     assert data1.data_dict == {"v1": "first", "v2": "second", "v3": "third"}
+    expected_dict = dict(
+        v1 = list("abcdef"),
+        v2 = 2,
+        v3 = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    )
+    assert data1.dict == expected_dict
     expected_repr = "\n".join([
         "Dataset aDatasetVectorScalar of shape (6, 3)",
         "v1 = ['a', 'b' ... 'e', 'f']",
