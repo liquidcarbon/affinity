@@ -95,27 +95,41 @@ def test_dataset_scalar():
 def test_dataset_scalar_vector():
     class aDatasetVectorScalar(af.Dataset):
         """A well-documented dataset."""
-        v1 = af.Vector(np.float32, comment="first")
+        v1 = af.Vector(np.str_, comment="first")
         v2 = af.Scalar(np.int8, comment="second")
+        v3 = af.VectorF16("third")
     data1 = aDatasetVectorScalar(
-        v1 = [0., 1.],
-        v2 = 2
+        v1 = list("abcdef"),
+        v2 = 2,
+        v3 = range(6)
     )
-    assert len(data1) == 2
-    assert data1.data_dict == {"v1": "first", "v2": "second"}
+
+    assert len(data1) == 6
+    assert data1.shape == (6, 3)
+    assert data1.data_dict == {"v1": "first", "v2": "second", "v3": "third"}
+    expected_repr = "\n".join([
+        "Dataset aDatasetVectorScalar of shape (6, 3)",
+        "v1 = ['a', 'b' ... 'e', 'f']",
+        "v2 = 2",
+        "v3 = [0.0, 1.0 ... 4.0, 5.0]",
+    ])
+    assert repr(data1) == expected_repr
     assert data1.metadata.get("table_comment") == "A well-documented dataset."
     assert data1.metadata.get("source") == "manual"
     expected_df = pd.DataFrame({
-        "v1": [0., 1.],
-        "v2": [2, 2]
-    }).astype({"v1": np.float32, "v2": np.int8})
+        "v1": list("abcdef"),
+        "v2": 2,
+        "v3": range(6)
+    }).astype({"v1": np.str_, "v2": np.int8, "v3": np.float16})
     pd.testing.assert_frame_equal(data1.df, expected_df)
     class aDatasetOnlyVector(af.Dataset):
-        v1 = af.Vector(np.float32, comment="first")
+        v1 = af.Vector(np.str_, comment="first")
         v2 = af.Vector(np.int8, comment="second")
+        v3 = af.VectorF16("third")
     data2 = aDatasetOnlyVector(
-        v1 = [0., 1.],
-        v2 = [2, 2]
+        v1 = list("abcdef"),
+        v2 = [2] * 6,
+        v3 = [0, 1, 2, 3, 4, 5]
     )
     pd.testing.assert_frame_equal(data1.df, data2.df)
     assert data1 == data2
@@ -232,6 +246,7 @@ def test_parquet_roundtrip_with_rename():
     with pytest.raises(KeyError):
         verbatim = IsotopeData.build(query=f"FROM '{url}'")
     data_from_sql = IsotopeData.build(query=f"FROM '{url}'", rename=True)
+    assert len(data_from_sql) == 354
     test_file = Path("test.parquet")
     data_from_sql.to_parquet(test_file)
     data_from_parquet = IsotopeData.build(query=f"FROM '{test_file}'")

@@ -184,14 +184,23 @@ class Dataset:
         return instance
 
     def __len__(self) -> int:
-        return len(next(iter(self)))
+        return len(next(iter(self))[1])
 
     def __iter__(self):
-        """Like __dict__ but only yields attrs defined in the class."""
+        """Yields attr names and values, in same order as defined in class."""
         yield from (
-            (k, v) for k, v in self.__dict__.items()
-            if k in self.__class__.__dict__
+            (k, self.__dict__[k])
+            for k in self.__class__.__dict__
+            if k in self.__dict__
         )
+
+    def __repr__(self):
+        lines = [f"Dataset {self.__class__.__name__} of shape {self.shape}"]
+        dict_list = self.df4.to_dict("list")
+        dict_list.update(**self._scalars)
+        for k, v in dict_list.items():
+            lines.append(f"{k} = {v}".replace(", '...',", " ..."))
+        return "\n".join(lines)
  
     def sql(self, query):
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
@@ -202,8 +211,13 @@ class Dataset:
         return
 
     @property
+    def shape(self):
+        return len(self), len(self._vectors) + len(self._scalars)
+    
+    @property
     def dict(self) -> dict:
-        return
+        """Distinct from __dict__ and __iter__, returns scalars as scalars."""
+        return dict(self, **self._scalars)
 
     @property
     def data_dict(self) -> dict:
@@ -221,7 +235,16 @@ class Dataset:
     @property
     def df(self) -> pd.DataFrame:
         return pd.DataFrame(dict(self))
-
+    
+    @property
+    def df4(self) -> pd.DataFrame:
+        if len(self) > 4:
+            df = self.df.iloc[[0, 1, -2, -1], :].copy()
+            df.loc[1.5] = "..."
+            return df.sort_index()
+        else:
+            return self.df
+    
     @property
     def arrow(self) -> "pa.Table":
         metadata = {str(k): str(v) for k, v in self.metadata.items()}
