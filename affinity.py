@@ -50,6 +50,12 @@ class Descriptor:
     def __set_name__(self, owner, name):
         self.name = name
 
+    @classmethod
+    def factory(cls, dtype, array_class=pd.Series):
+        class DescriptorType(cls):
+            def __init__(self, comment=None, *, values=None, array_class=array_class):
+                super().__init__(dtype, values, comment, array_class)
+        return DescriptorType
 
 class Scalar(Descriptor):
     def __init__(self, dtype, value=None, comment=None, array_class=np.array):
@@ -254,39 +260,21 @@ class Dataset:
     def pl(self) -> "pl.DataFrame":
         return pl.DataFrame(dict(self))
 
-
-class VectorUntyped(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(object, values, comment, array_class)
-
-class VectorI8(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(pd.Int8Dtype(), values, comment, array_class)
-
-class VectorBool(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__("boolean", values, comment, array_class)
-
-class VectorI16(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(pd.Int16Dtype(), values, comment, array_class)
-
-class VectorI32(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(pd.Int32Dtype(), values, comment, array_class)
-
-class VectorI64(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(pd.Int64Dtype(), values, comment, array_class)
-
-class VectorF16(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(np.float16, values, comment, array_class)
-
-class VectorF32(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(np.float32, values, comment, array_class)
-
-class VectorF64(Vector):
-    def __init__(self, comment=None, *, values=None, array_class=pd.Series):
-        super().__init__(np.float64, values, comment, array_class)
+ScalarObject = Scalar.factory(object)
+ScalarBool = Scalar.factory("boolean")
+ScalarI8 = Scalar.factory(pd.Int8Dtype()) 
+ScalarI16 = Scalar.factory(pd.Int16Dtype()) 
+ScalarI32 = Scalar.factory(pd.Int32Dtype()) 
+ScalarI64 = Scalar.factory(pd.Int64Dtype()) 
+ScalarF16 = Scalar.factory(np.float16) 
+ScalarF32 = Scalar.factory(np.float32)
+ScalarF64 = Scalar.factory(np.float64)
+VectorObject = Vector.factory(object) 
+VectorBool = Vector.factory("boolean")
+VectorI8 = Vector.factory(pd.Int8Dtype()) 
+VectorI16 = Vector.factory(pd.Int16Dtype()) 
+VectorI32 = Vector.factory(pd.Int32Dtype()) 
+VectorI64 = Vector.factory(pd.Int64Dtype()) 
+VectorF16 = Vector.factory(np.float16) 
+VectorF32 = Vector.factory(np.float32)
+VectorF64 = Vector.factory(np.float64)

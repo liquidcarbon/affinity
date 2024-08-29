@@ -16,15 +16,10 @@ def test_empty_vector():
     assert repr(v) == "Vector <class 'numpy.int8'> of len 0  # None\narray([], dtype=int8)"
 
 
-def test_vector_from_scalar():
-    s = af.Scalar(np.bool_, 1)
-    v = af.Vector.from_scalar(s)
-    assert len(v) == 1
-    assert v.scalar == True
-
-
-def test_typed_vectors():
-    v_untyped = af.VectorUntyped()
+def test_typed_descriptors():
+    s_untyped = af.ScalarObject()
+    assert s_untyped.dtype == object
+    v_untyped = af.VectorObject()
     assert v_untyped.dtype == object
     v_bool = af.VectorBool()
     assert v_bool.dtype == "boolean"
@@ -42,6 +37,13 @@ def test_typed_vectors():
     assert v_f32.dtype == np.float32
     v_f64 = af.VectorF64()
     assert v_f64.dtype == np.float64
+
+
+def test_vector_from_scalar():
+    s = af.ScalarBool("single boolean", values=1)
+    v = af.Vector.from_scalar(s)
+    assert len(v) == 1
+    assert v.scalar == True
 
 
 def test_dataset_no_attributes():
@@ -85,7 +87,7 @@ def test_dataset_instantiation_leaves_class_attrs_unmodified():
 def test_dataset_scalar():
     class aScalarDataset(af.Dataset):
         v1 = af.Scalar(np.bool_, comment="first")
-        v2 = af.Scalar(np.float16, comment="second")
+        v2 = af.ScalarF16("second")
     data = aScalarDataset(v1=0, v2=float("-inf"))
     assert data.v1[-1] == False
     assert data.v2.dtype == np.float16
@@ -209,9 +211,9 @@ def test_to_parquet_with_metadata():
     data.to_parquet(test_file)
     class KeyValueMetadata(af.Dataset):
         """Stores results of reading Parquet metadata."""
-        file_name = af.VectorUntyped()
-        key = af.VectorUntyped()
-        value = af.VectorUntyped()
+        file_name = af.VectorObject()
+        key = af.VectorObject()
+        value = af.VectorObject()
     test_file_metadata = KeyValueMetadata.from_sql(
         f"""
         SELECT
@@ -237,7 +239,7 @@ def test_to_parquet_with_metadata():
 # @pytest.mark.skip(reason="The web query takes a couple secounds")
 def test_parquet_roundtrip_with_rename():
     class IsotopeData(af.Dataset):
-        symbol = af.VectorUntyped("Element")
+        symbol = af.VectorObject("Element")
         z = af.VectorI8("Atomic Number (Z)")
         mass = af.VectorF64("Isotope Mass (Da)")
         abundance = af.VectorF64("Relative natural abundance")
