@@ -236,7 +236,6 @@ def test_to_parquet_with_metadata():
     )
 
 
-# @pytest.mark.skip(reason="The web query takes a couple secounds")
 def test_parquet_roundtrip_with_rename():
     class IsotopeData(af.Dataset):
         symbol = af.VectorObject("Element")

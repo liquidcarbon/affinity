@@ -3,6 +3,8 @@
 Affinity makes it easy to create well-annotated datasets from vector data.  
 What your data means should always travel together with the data.
 
+Affinity is a pythonic dialect of Data Definition Language (DDL).  Affinity does not replace any dataframe library, but can be used with any package you like.  
+
 ## Usage
 
 For now, just copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
@@ -10,7 +12,7 @@ For now, just copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbo
 ```python
 import affinity as af
 
-class SensorData(af.Dataset):
+class SensorData(af.Dataset):data definition
   """Experimental data from Top Secret Sensor Tech."""
   t = af.VectorF32("elapsed time (sec)")
   channel = af.VectorI8("channel number (left to right)")
@@ -21,7 +23,7 @@ class SensorData(af.Dataset):
 # this working concept covers the following:
 data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
-data = SensorData.build(...)        # ✅ build from a source (dataframes, DuckDB) with type casting
+data = SensorData.build(...)        # ✅ build from a source (dataframes, DuckDB)
 data.df  # .pl / .arrow             # ✅ view as dataframe (Pandas/Polars/Arrow)
 data.metadata                       # ✅ annotations (data dict with column and dataset comments), origin
 data.origin                         # ✅ creation metadata, some data provenance
@@ -30,13 +32,23 @@ data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
 ```
 
-## Parquet Round-Trip
 
-1) declare class
-2) build class instance from a URL using DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), renaming and retyping the fields on the fly
-3) write to Parquet (with metadata)
+## How it works
 
-```python
+The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the behavior of children data classes:
+- the concise class definition carries the expected data types and descriptions
+- class attributes can be represented by any array (default: `pd.Series` because it handles nullable integers well; available: numpy, polars, arrow)
+- class instances can handlesbe constructed from any scalars or iterables
+- class instances can be cast into any dataframe flavor, and all their methods are available
+
+
+## Detailed example: Parquet Round-Trip
+
+Affinity makes class declaration as concise as possible.  
+All you need to create a data class are typed classes and comments explaining what the fields mean.
+
+#### 1. Declare class
+```
 import affinity as af
 
 class IsotopeData(af.Dataset):
@@ -44,12 +56,32 @@ class IsotopeData(af.Dataset):
   
     [^1] https://www.nist.gov/pml/atomic-weights-and-isotopic-compositions-relative-atomic-masses
     """
-    symbol = af.VectorUntyped("Element")
+    symbol = af.VectorObject("Element")
     z = af.VectorI8("Atomic Number (Z)")
     mass = af.VectorF64("Isotope Mass (Da)")
     abundance = af.VectorF64("Relative natural abundance")
 
+IsotopesData.z
+# DescriptorType Int8 of len 0  # Atomic Number (Z)
+# Series([], dtype: Int8)
+
+IsotopeData().pl  # show fields and types
+# shape: (0, 4)
+# symbol  z  mass abundance
+#    str i8   f64       f64
+```
+
+The class attributes are instantiated Vector objects of zero length.  Using the [desciptor pattern](https://docs.python.org/3/howto/descriptor.html), they are replaced with actual data arrays on building the instance.
+
+#### 2. Build class instance from querying a CSV
+
+To build the dataset, we use `IsotopeData.build()` method with `query` argument.  We use DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), with `rename=True` keyword argument.  The fields in the query result will be assigned names and types provided in the class definition.  With `rename=False` (default), the source columns must be named exactly as class attributes.  When safe type casting is not possible, an error will be raised; element with z=128 would not fit this dataset. 
+
+```python
 url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
+data_from_sql = IsotopeData.build(query=f"FROM '{url}'", rename=True)
+# data_from_sql = IsotopeData.build(query=f"FROM '{url}'")  # will fail
+
 query_without_rename = f"""
 SELECT
     Symbol as symbol,
@@ -58,11 +90,23 @@ SELECT
     Abundance as abundance,
 FROM '{url}'
 """
-data_from_sql = IsotopeData.build(query="FROM '{url}'", rename=True)
-data_from_sql.to_parquet("test.parquet")
+data_from_sql2 = IsotopeData.build(query=query_without_rename)
+assert data_from_sql == data_from_sql2
+print(data_from_sql)
+
+# Dataset IsotopeData of shape (354, 4)
+# symbol = ['H', 'H' ... 'Ts', 'Og']
+# z = [1, 1 ... 117, 118]
+# mass = [1.007825, 2.014102 ... 292.20746, 294.21392]
+# abundance = [0.999885, 0.000115 ... 0.0, 0.0]
 ```
 
-4) inspect metadata using PyArrow:
+#### 3. Write to Parquet, with metadata.
+```python
+data_from_sql.to_parquet("test.parquet")  # requires PyArrow
+```
+
+#### 4. Inspect metadata using PyArrow:
 
 ```python
 import pyarrow.parquet as pq
@@ -90,7 +134,7 @@ pf.schema_arrow
 #  ' + 146
 ```
 
-5) inspect metadata using DuckDB
+#### 5. Inspect metadata using DuckDB
 
 ```python
 import duckdb
@@ -108,7 +152,7 @@ print(source.fetchall()[-1][-1].decode())
 # FROM 'https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv'
 ```
 
-6) read Parquet:
+#### 6. Read Parquet:
 
 ```python
 data_from_parquet = IsotopeData.build(query="FROM 'isotopes.parquet'")
@@ -117,17 +161,11 @@ print(data_from_parquet.pl.dtypes)
 # [String, Int8, Float64, Float64]
 ```
 
-## How it works
 
-Affinity does not replace any dataframe library, but can be used with any package you like.  
-
-The `af.Dataset` is a base class that defines the behavior of children data classes:
-- the concise class definition carries the annotations and expected data types
-- subclass attributes (vectors) can be represented by any array (numpy, pandas, polars, arrow)
-- subclass instances can be constructed from any scalars or iterables
-- subclass instances can be cast into any dataframe flavor, and exported to any format that your favorite dataframes support
 
 ## Motivation
+
+![Tell Me Why](https://github.com/user-attachments/assets/fd985e9b-365e-4d51-96f2-f8165eebfb6c)
 
 Once upon a time, relational databases met object-oriented programming, and gave rise to object-relational mapping. Django ORM and SQLAlchemy unlocked the ability to represent database entries as python objects, with attributes for columns and relations, and methods for create-read-update-delete (CRUD) transactions.  These scalar data elements (numbers, strings, booleans) carry a lot of meaning: someone's name or email or account balance, amounts of available items, time of important events.  They change relatively frequently, one row at a time, and live in active, fast memory (RAM).
 
