@@ -268,7 +268,11 @@ class Dataset:
     @property
     def arrow(self) -> "pa.Table":
         metadata = {str(k): str(v) for k, v in self.metadata.items()}
-        return pa.table(dict(self), metadata=metadata)
+        _dict = {
+            k: [v.dict for v in vector] if self.is_dataset(k) else vector
+            for k, vector in self
+        }
+        return pa.table(_dict, metadata=metadata)
     
     @property
     def pl(self) -> "pl.DataFrame":

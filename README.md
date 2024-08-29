@@ -213,6 +213,8 @@ Have you ever stared at a bunch of numbers and had no clue what they represented
 - nested data (WIP)
 
 ```python
+# nested datasets serialize as dicts(structs)
+import affinity as af
 class User(af.Dataset):
     name = af.ScalarObject("username")
     attrs = af.VectorObject("user attributes")
@@ -223,4 +225,14 @@ class Task(af.Dataset):
 u1 = User(name="Alice", attrs=["adorable", "agreeable"])
 u2 = User(name="Brent", attrs=["bland", "broke"])
 t1 = Task(created_ts=123.456, user=[u1, u2], hours=[3, 5])
+
+t1.to_parquet("task.parquet")
+duckdb.sql("FROM 'task.parquet'")
+# ┌────────────┬─────────────────────────────────────────────────┬───────┐
+# │ created_ts │                      user                       │ hours │
+# │   double   │     struct(attrs varchar[], "name" varchar)     │ int16 │
+# ├────────────┼─────────────────────────────────────────────────┼───────┤
+# │    123.456 │ {'attrs': [adorable, agreeable], 'name': Alice} │     3 │
+# │    123.456 │ {'attrs': [bland, broke], 'name': Brent}        │     5 │
+# └────────────┴─────────────────────────────────────────────────┴───────┘
 ```
