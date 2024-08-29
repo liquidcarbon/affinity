@@ -209,5 +209,18 @@ Have you ever stared at a bunch of numbers and had no clue what they represented
 
 ## Future
 
-- nested data
 - pipification?  I envision that even when ~complete, this package remain just one file
+- nested data (WIP)
+
+```python
+class User(af.Dataset):
+    name = af.ScalarObject("username")
+    attrs = af.VectorObject("user attributes")
+class Task(af.Dataset):
+    created_ts = af.ScalarF64("created timestamp")
+    user = af.VectorObject("user")
+    hours = af.VectorI16("time worked (hours)")
+u1 = User(name="Alice", attrs=["adorable", "agreeable"])
+u2 = User(name="Brent", attrs=["bland", "broke"])
+t1 = Task(created_ts=123.456, user=[u1, u2], hours=[3, 5])
+```

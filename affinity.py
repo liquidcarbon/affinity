@@ -248,9 +248,12 @@ class Dataset:
 
     @property
     def df(self) -> pd.DataFrame:
-        # _dict = {k: v.dict if self.is_dataset(k) else v for k, v in self}
-        # return pd.DataFrame(_dict)
-        return pd.DataFrame(dict(self))
+        _dict = {
+            k: [v.dict for v in vector] if self.is_dataset(k) else vector
+            for k, vector in self
+        }
+        return pd.DataFrame(_dict)
+        # return pd.DataFrame(dict(self))
 
     
     @property

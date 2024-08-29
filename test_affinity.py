@@ -265,11 +265,21 @@ def test_nested_dataset():
     class User(af.Dataset):
         name = af.ScalarObject("username")
         attrs = af.VectorObject("user attributes")
-    class Order(af.Dataset):
+    class Task(af.Dataset):
+        created_ts = af.ScalarF64("created timestamp")
         user = af.VectorObject("user")
-        qty = af.VectorI16("quantity")
+        hours = af.VectorI16("time worked (hours)")
     u1 = User(name="Alice", attrs=["adorable", "agreeable"])
     u2 = User(name="Brent", attrs=["bland", "broke"])
-    o1 = Order(user=[u1, u2], qty=[3, 5])
-    assert o1.is_dataset("user") == True
-    assert o1.is_dataset("qty") == False
+    t1 = Task(created_ts=123.456, user=[u1, u2], hours=[3, 5])
+    assert t1.is_dataset("user") == True
+    assert t1.is_dataset("qty") == False
+    expected_dict = {
+        'created_ts': 123.456,
+        'user': [
+            {'name': 'Alice', 'attrs': ['adorable', 'agreeable']},
+            {'name': 'Brent', 'attrs': ['bland', 'broke']}
+        ],
+        'hours': [3, 5]
+    }
+    assert t1.dict == expected_dict
