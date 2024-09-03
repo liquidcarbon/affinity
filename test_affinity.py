@@ -213,28 +213,31 @@ def test_to_parquet_with_metadata():
         v2 = af.VectorF32(comment="float like a butterfly")
         v3 = af.VectorI16(comment="int like a three")
     data = aDataset(v1=[True], v2=[1/2], v3=[3])
-    test_file = Path("test.parquet")
-    data.to_parquet(test_file)
+    test_file_arrow = Path("test_arrow.parquet")
+    test_file_duckdb = Path("test_duckdb.parquet")
+    data.to_parquet(test_file_arrow, engine="pyarrow")
+    data.to_parquet(test_file_duckdb, engine="duckdb")
     class KeyValueMetadata(af.Dataset):
         """Stores results of reading Parquet metadata."""
         file_name = af.VectorObject()
         key = af.VectorObject()
         value = af.VectorObject()
-    test_file_metadata = KeyValueMetadata.from_sql(
+    test_file_metadata_arrow = KeyValueMetadata.from_sql(
         f"""
         SELECT
             file_name,
             DECODE(key) AS key,
             DECODE(value) AS value,
-        FROM parquet_kv_metadata('{test_file}')
+        FROM parquet_kv_metadata('{test_file_arrow}')
         WHERE DECODE(key) != 'ARROW:schema'
         """,
         method="polars",
         field_names="strict"
     )
-    test_file.unlink()
+    test_file_arrow.unlink()
+    test_file_duckdb.unlink()
     assert all(
-        value in test_file_metadata.value.values
+        value in test_file_metadata_arrow.value.values
         for value in [
             "is that so?", "float like a butterfly", "int like a three",
             "Delightful data.", "manual"

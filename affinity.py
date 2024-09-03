@@ -219,9 +219,18 @@ class Dataset:
         """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
         raise NotImplementedError
     
-    def to_parquet(self, path):
-        pq.write_table(self.arrow, path)
-        return
+    def to_parquet(self, path, engine="pyarrow"):
+        if engine == "pyarrow":
+            pq.write_table(self.arrow, path)
+        if engine == "duckdb":
+            kv_metadata = ", ".join([f"{k}: '{v}'" for k, v in self.metadata.items()])
+            _df = self.df
+            duckdb.sql(f"""
+            COPY (SELECT * FROM _df) TO {path} (
+                FORMAT PARQUET,
+                KV_METADATA {{ {kv_metadata} }}
+            );""")
+        return path
 
     @property
     def shape(self):
@@ -252,8 +261,8 @@ class Dataset:
             k: [v.dict for v in vector] if self.is_dataset(k) else vector
             for k, vector in self
         }
+        # print(locals())
         return pd.DataFrame(_dict)
-        # return pd.DataFrame(dict(self))
 
     
     @property
