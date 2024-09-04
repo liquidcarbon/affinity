@@ -22,7 +22,15 @@ jobs:
 
       - name: Create a Release
         run: |
+          gh --version
           RELEASE_DATE=$(date +'%Y-%m-%d')
           gh release create "v${RELEASE_DATE}" dist/affinity-*.whl --title "Release ${RELEASE_DATE}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add latest tag
+        run: |
+          git tag -f latest
+          git push origin latest --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
