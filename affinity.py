@@ -169,7 +169,7 @@ class Dataset:
             return cls.from_dataframe(dataframe, **kwargs)
     
     @classmethod
-    def from_dataframe(cls, dataframe: Union[pd.DataFrame|pl.DataFrame], **kwargs):
+    def from_dataframe(cls, dataframe: pd.DataFrame | Optional['pl.DataFrame'], **kwargs):
         instance = cls()
         for i, k in enumerate(dict(instance)):
             if kwargs.get("rename") in (None, False):
