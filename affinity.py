@@ -238,8 +238,8 @@ class Dataset:
             kv_metadata = []
             for k, v in self.metadata.items():
                 if isinstance(v, str) and "'" in v:
-                    # must escape single quotes
-                    kv_metadata.append(f"{k}: '{v.replace("'", "''")}'")
+                    _v = {v.replace("'", "''")}  # must escape single quotes
+                    kv_metadata.append(f"{k}: '{_v}'")
                 else:
                     kv_metadata.append(f"{k}: '{v}'")
             self.sql(f"""
