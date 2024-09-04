@@ -206,6 +206,34 @@ def test_to_pyarrow():
     )
 
 
+def test_sql_simple():
+    class aDataset(af.Dataset):
+        v1 = af.VectorI8()
+        v2 = af.VectorBool()
+    data_a = aDataset(v1=[1, 2], v2=[True, False])
+    data_a_sql_df = data_a.sql("FROM df").df()
+    assert (data_a_sql_df.values == data_a.df.values).all()
+
+
+def test_sql_join():
+    class aDataset(af.Dataset):
+        v1 = af.VectorI8()
+        v2 = af.VectorBool()
+    data_a = aDataset(v1=[1, 2], v2=[True, False])
+    class bDataset(af.Dataset):
+        v1 = af.VectorI8()
+        v3 = af.VectorObject()
+    data_b = bDataset(v1=[1, 3], v3=["foo", "moo"])
+    joined = data_a.sql("FROM df JOIN dfb USING (v1)", dfb=data_b.pl)
+    assert joined.fetchone() == (1, True, "foo")
+
+def test_replacement_scan_persistence_from_last_test():
+    class cDataset(af.Dataset):
+        v1 = af.VectorI8()
+    cDataset().sql("FROM dfb")  # "dfb" from last test still available
+    with pytest.raises(Exception):
+        cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
+
 def test_to_parquet_with_metadata():
     class aDataset(af.Dataset):
         """Delightful data."""
@@ -258,7 +286,7 @@ def test_parquet_roundtrip_with_rename():
     data_from_sql = IsotopeData.build(query=f"FROM '{url}'", rename=True)
     assert len(data_from_sql) == 354
     test_file = Path("test.parquet")
-    data_from_sql.to_parquet(test_file)
+    data_from_sql.to_parquet(test_file, engine="duckdb")
     data_from_parquet = IsotopeData.build(query=f"FROM '{test_file}'")
     test_file.unlink()
     assert data_from_sql == data_from_parquet

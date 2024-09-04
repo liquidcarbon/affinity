@@ -186,7 +186,7 @@ class Dataset:
         if kwargs.get("method") in ("polars",):
             query_results = duckdb.sql(query).pl()        
         instance = cls.from_dataframe(query_results, **kwargs)
-        instance.origin["source"] += f"\nquery:\n{query}"
+        instance.origin["source"] += f'\nquery:\n{query}'
         return instance
 
     def __len__(self) -> int:
@@ -215,20 +215,36 @@ class Dataset:
         else:
             return all(isinstance(v, Dataset) for v in attr)
 
-    def sql(self, query):
-        """Out of scope. DuckDB won't let `FROM self.df`, must register views."""
-        raise NotImplementedError
-    
-    def to_parquet(self, path, engine="pyarrow"):
+    def sql(self, query, **replacements):
+        """Query the dataset with DuckDB.
+        
+        DuckDB uses replacement scans to query python objects.
+        Class instance attributes like `FROM self.df` must be registered as views.
+        This is what **replacements kwargs are for.
+        By default, df=self.df (pandas dataframe) is used.
+        The registered views persist across queries.  RAM impact TBD.
+        """
+        if not replacements.get("df"):
+            duckdb.register("df", self.df)
+        for k, v in replacements.items():
+            duckdb.register(k, v)
+        return duckdb.sql(query)
+
+
+    def to_parquet(self, path, engine="duckdb"):
         if engine == "pyarrow":
             pq.write_table(self.arrow, path)
         if engine == "duckdb":
-            kv_metadata = ", ".join([f"{k}: '{v}'" for k, v in self.metadata.items()])
-            _df = self.df
-            duckdb.sql(f"""
-            COPY (SELECT * FROM _df) TO {path} (
+            kv_metadata = []
+            for k, v in self.metadata.items():
+                if isinstance(v, str) and "'" in v:
+                    kv_metadata.append(f"{k}: '{v.replace("'", "''")}'")
+                else:
+                    kv_metadata.append(f"{k}: '{v}'")
+            self.sql(f"""
+            COPY (SELECT * FROM df) TO {path} (
                 FORMAT PARQUET,
-                KV_METADATA {{ {kv_metadata} }}
+                KV_METADATA {{ {", ".join(kv_metadata)} }}
             );""")
         return path
 
@@ -261,7 +277,6 @@ class Dataset:
             k: [v.dict for v in vector] if self.is_dataset(k) else vector
             for k, vector in self
         }
-        # print(locals())
         return pd.DataFrame(_dict)
 
     
