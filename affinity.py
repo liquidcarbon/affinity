@@ -232,12 +232,13 @@ class Dataset:
 
 
     def to_parquet(self, path, engine="duckdb"):
-        if engine == "pyarrow":
+        if engine == "arrow":
             pq.write_table(self.arrow, path)
         if engine == "duckdb":
             kv_metadata = []
             for k, v in self.metadata.items():
                 if isinstance(v, str) and "'" in v:
+                    # must escape single quotes
                     kv_metadata.append(f"{k}: '{v.replace("'", "''")}'")
                 else:
                     kv_metadata.append(f"{k}: '{v}'")

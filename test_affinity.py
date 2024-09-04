@@ -243,7 +243,7 @@ def test_to_parquet_with_metadata():
     data = aDataset(v1=[True], v2=[1/2], v3=[3])
     test_file_arrow = Path("test_arrow.parquet")
     test_file_duckdb = Path("test_duckdb.parquet")
-    data.to_parquet(test_file_arrow, engine="pyarrow")
+    data.to_parquet(test_file_arrow, engine="arrow")
     data.to_parquet(test_file_duckdb, engine="duckdb")
     class KeyValueMetadata(af.Dataset):
         """Stores results of reading Parquet metadata."""
@@ -286,10 +286,13 @@ def test_parquet_roundtrip_with_rename():
     data_from_sql = IsotopeData.build(query=f"FROM '{url}'", rename=True)
     assert len(data_from_sql) == 354
     test_file = Path("test.parquet")
+    data_from_sql.to_parquet(test_file, engine="arrow")
+    data_from_parquet_arrow = IsotopeData.build(query=f"FROM '{test_file}'")
     data_from_sql.to_parquet(test_file, engine="duckdb")
-    data_from_parquet = IsotopeData.build(query=f"FROM '{test_file}'")
+    data_from_parquet_duckdb = IsotopeData.build(query=f"FROM '{test_file}'")
     test_file.unlink()
-    assert data_from_sql == data_from_parquet
+    assert data_from_sql == data_from_parquet_arrow
+    assert data_from_parquet_duckdb == data_from_parquet_arrow
 
 
 def test_nested_dataset():

@@ -27,6 +27,7 @@ data = SensorData.build(...)        # ✅ build from a source (dataframes, DuckD
 data.df  # .pl / .arrow             # ✅ view as dataframe (Pandas/Polars/Arrow)
 data.metadata                       # ✅ annotations (data dict with column and dataset comments), origin
 data.origin                         # ✅ creation metadata, some data provenance
+data.sql(...)                       # ✅ run DuckDB SQL query on the dataset
 data.to_parquet(...)                # ✅ data.metadata -> Parquet metadata
 data.to_csv(...)                    # ⚒️ annotations in the header
 data.to_excel(...)                  # ⚒️ annotations on separate sheet
