@@ -243,11 +243,12 @@ def test_to_parquet_with_metadata():
     data = aDataset(v1=[True], v2=[1/2], v3=[3])
     test_file_arrow = Path("test_arrow.parquet")
     test_file_duckdb = Path("test_duckdb.parquet")
+    test_file_duckdb_polars = Path("test_duckdb_polars.parquet")
     data.to_parquet(test_file_arrow, engine="arrow")
     data.to_parquet(test_file_duckdb, engine="duckdb")
+    data.to_parquet(test_file_duckdb_polars, engine="duckdb", df=data.pl)
     class KeyValueMetadata(af.Dataset):
         """Stores results of reading Parquet metadata."""
-        file_name = af.VectorObject()
         key = af.VectorObject()
         value = af.VectorObject()
     test_file_metadata_arrow = KeyValueMetadata.from_sql(
@@ -259,11 +260,24 @@ def test_to_parquet_with_metadata():
         FROM parquet_kv_metadata('{test_file_arrow}')
         WHERE DECODE(key) != 'ARROW:schema'
         """,
+        method="pandas",
+        field_names="strict"
+    )
+    test_file_metadata_duckdb = KeyValueMetadata.from_sql(
+        f"""
+        SELECT
+            DECODE(key) AS key,
+            DECODE(value) AS value,
+        FROM parquet_kv_metadata('{test_file_duckdb_polars}')
+        WHERE DECODE(key) != 'ARROW:schema'
+        """,
         method="polars",
         field_names="strict"
     )
+    assert test_file_metadata_arrow == test_file_metadata_duckdb
     test_file_arrow.unlink()
     test_file_duckdb.unlink()
+    test_file_duckdb_polars.unlink()
     assert all(
         value in test_file_metadata_arrow.value.values
         for value in [

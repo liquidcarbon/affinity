@@ -224,14 +224,14 @@ class Dataset:
         By default, df=self.df (pandas dataframe) is used.
         The registered views persist across queries.  RAM impact TBD.
         """
-        if not replacements.get("df"):
+        if replacements.get("df") is None:
             duckdb.register("df", self.df)
         for k, v in replacements.items():
             duckdb.register(k, v)
         return duckdb.sql(query)
 
 
-    def to_parquet(self, path, engine="duckdb"):
+    def to_parquet(self, path, engine="duckdb", **kwargs):
         if engine == "arrow":
             pq.write_table(self.arrow, path)
         if engine == "duckdb":
@@ -246,7 +246,7 @@ class Dataset:
             COPY (SELECT * FROM df) TO {path} (
                 FORMAT PARQUET,
                 KV_METADATA {{ {", ".join(kv_metadata)} }}
-            );""")
+            );""", **kwargs)
         return path
 
     @property
