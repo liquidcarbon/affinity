@@ -20,8 +20,14 @@ jobs:
       - name: Build the wheel
         run: hatch build
 
-      - name: Upload the wheel as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-wheel
-          path: dist/*.whl
+      - name: Extract version from pyproject.toml
+        id: extract_version
+        run: |
+          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create a Release
+        run: |
+          gh release create ${{ env.VERSION }} dist/affinity-*.whl --title "Release ${{ env.VERSION }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
