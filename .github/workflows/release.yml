@@ -24,7 +24,7 @@ jobs:
         run: |
           RELEASE_DATE=$(date +'%Y-%m-%d')
           COMMIT_SHA=$(git rev-parse --short HEAD)
-          UNIQUE_TAG="release-${RELEASE_DATE}-${COMMIT_SHA}"
+          UNIQUE_TAG="${RELEASE_DATE}-${COMMIT_SHA}"
           
           gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${UNIQUE_TAG}"
           git tag -f latest
