@@ -1,0 +1,24 @@
+name: Build and Release Python Wheel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    if: contains(github.event.head_commit.message, 'release')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build the wheel
+        run: python -m wheel .
+
+      - name: Upload the wheel as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel
+          path: dist/*.whl
