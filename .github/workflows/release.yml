@@ -22,14 +22,11 @@ jobs:
 
       - name: Create a Release
         run: |
-          gh --version
           RELEASE_DATE=$(date +'%Y-%m-%d')
-          gh release create "v${RELEASE_DATE}" dist/affinity-*.whl --title "Release ${RELEASE_DATE}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add latest tag
-        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          UNIQUE_TAG="release-${RELEASE_DATE}-${COMMIT_SHA}"
+          
+          gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${UNIQUE_TAG}"
           git tag -f latest
           git push origin latest --force
         env:
