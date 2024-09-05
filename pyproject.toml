@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "affinity"
-version = "0.2.2"
+version = "0.3.0"
 description = "Module for creating well-documented datasets, with types and annotations."
 authors = [
     { name = "Alex Kislukhin" }
