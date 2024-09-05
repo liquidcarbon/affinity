@@ -50,11 +50,18 @@ class Descriptor:
     def __set_name__(self, owner, name):
         self.name = name
 
+    @property
+    def info(self):
+        _name = self.__class__.__name__
+        return f"{_name} {self.dtype}  # {self.comment}"
+
     @classmethod
-    def factory(cls, dtype, array_class=pd.Series):
+    def factory(cls, dtype, array_class=pd.Series, cls_name=None):
         class DescriptorType(cls):
             def __init__(self, comment=None, *, values=None, array_class=array_class):
                 super().__init__(dtype, values, comment, array_class)
+        if cls_name:
+            DescriptorType.__name__ = cls_name
         return DescriptorType
 
 class Scalar(Descriptor):
@@ -68,6 +75,9 @@ class Scalar(Descriptor):
 
     def __len__(self):
         return 1
+    
+    def __repr__(self):
+        return self.info
 
 
 class Vector(Descriptor):
@@ -98,19 +108,24 @@ class Vector(Descriptor):
         return getattr(self._values, attr)
 
     def __repr__(self):
-        return "\n".join([self.info, repr(self._values)])
+        return "\n".join([f"{self.info} | len {len(self)}", repr(self._values)])
     
     def __str__(self):
         return self.__repr__()
 
-    @property
-    def info(self):
-        # _type_ok = "✅" if self.dtype_match else "❌"
-        _name = self.__class__.__name__
-        return f"{_name} {self.dtype} of len {len(self)}  # {self.comment}"
+
+class DatasetMeta(type):
+    """Metaclass for custom repr."""
+
+    def __repr__(cls) -> str:
+        _lines = [cls.__name__]
+        for k, v in cls.__dict__.items():
+            if isinstance (v, Descriptor):
+                _lines.append(f"{k}: {v.info}")
+        return "\n".join(_lines)
 
 
-class Dataset:
+class Dataset(metaclass=DatasetMeta):
     """Base class for typed, annotated datasets."""
     
     @classmethod
@@ -120,6 +135,10 @@ class Dataset:
     @classmethod
     def get_vectors(cls):
         return {k: None for k,v in cls.__dict__.items() if isinstance(v, Vector)}
+
+    @classmethod
+    def get_dict(cls):
+        return dict(cls())
 
     def __init__(self, **fields: Union[Scalar|Vector]):
         """Create dataset, dynamically setting field values.
@@ -308,21 +327,20 @@ class Dataset:
     def pl(self) -> "pl.DataFrame":
         return pl.DataFrame(dict(self))
 
-ScalarObject = Scalar.factory(object)
-ScalarBool = Scalar.factory("boolean")
-ScalarI8 = Scalar.factory(pd.Int8Dtype()) 
-ScalarI16 = Scalar.factory(pd.Int16Dtype()) 
-ScalarI32 = Scalar.factory(pd.Int32Dtype()) 
-ScalarI64 = Scalar.factory(pd.Int64Dtype()) 
-ScalarF16 = Scalar.factory(np.float16) 
-ScalarF32 = Scalar.factory(np.float32)
-ScalarF64 = Scalar.factory(np.float64)
-VectorObject = Vector.factory(object) 
-VectorBool = Vector.factory("boolean")
-VectorI8 = Vector.factory(pd.Int8Dtype()) 
-VectorI16 = Vector.factory(pd.Int16Dtype()) 
-VectorI32 = Vector.factory(pd.Int32Dtype()) 
-VectorI64 = Vector.factory(pd.Int64Dtype()) 
-VectorF16 = Vector.factory(np.float16) 
-VectorF32 = Vector.factory(np.float32)
-VectorF64 = Vector.factory(np.float64)
+ScalarObject = Scalar.factory(object, cls_name="ScalarObject")
+ScalarBool = Scalar.factory("boolean", cls_name="ScalarBool")
+ScalarI8 = Scalar.factory(pd.Int8Dtype(), cls_name="ScalarI8") 
+ScalarI16 = Scalar.factory(pd.Int16Dtype(), cls_name="ScalarI16") 
+ScalarI32 = Scalar.factory(pd.Int32Dtype(), cls_name="ScalarI32") 
+ScalarI64 = Scalar.factory(pd.Int64Dtype(), cls_name="ScalarI64") 
+ScalarF32 = Scalar.factory(np.float32, cls_name="ScalarF32")
+ScalarF64 = Scalar.factory(np.float64, cls_name="ScalarF64")
+VectorObject = Vector.factory(object, cls_name="VectorObject") 
+VectorBool = Vector.factory("boolean", cls_name="VectorBool")
+VectorI8 = Vector.factory(pd.Int8Dtype(), cls_name="VectorI8") 
+VectorI16 = Vector.factory(pd.Int16Dtype(), cls_name="VectorI16") 
+VectorI32 = Vector.factory(pd.Int32Dtype(), cls_name="VectorI32") 
+VectorI64 = Vector.factory(pd.Int64Dtype(), cls_name="VectorI64") 
+VectorF16 = Vector.factory(np.float16, cls_name="VectorF16") 
+VectorF32 = Vector.factory(np.float32, cls_name="VectorF32")
+VectorF64 = Vector.factory(np.float64, cls_name="VectorF64")

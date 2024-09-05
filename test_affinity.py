@@ -5,6 +5,10 @@ import pytest
 from pathlib import Path
 
 
+def test_scalar():
+    s = af.ScalarObject("field comment")
+    assert repr(s) == "ScalarObject <class 'object'>  # field comment"
+
 def test_empty_vector_no_dtype():
     with pytest.raises(TypeError):
         v = af.Vector()
@@ -13,7 +17,7 @@ def test_empty_vector_no_dtype():
 def test_empty_vector():
     v = af.Vector(np.int8)
     assert len(v) == 0
-    assert repr(v) == "Vector <class 'numpy.int8'> of len 0  # None\narray([], dtype=int8)"
+    assert repr(v) == "Vector <class 'numpy.int8'>  # None | len 0\narray([], dtype=int8)"
 
 
 def test_typed_descriptors():
@@ -37,6 +41,7 @@ def test_typed_descriptors():
     assert v_f32.dtype == np.float32
     v_f64 = af.VectorF64()
     assert v_f64.dtype == np.float64
+    assert v_f64.__class__.__name__ == "VectorF64"
 
 
 def test_vector_from_scalar():
@@ -71,7 +76,13 @@ def test_dataset_with_overflows():
 def test_empty_dataset():
     class aDataset(af.Dataset):
         s = af.ScalarObject("scalar")
-        v = af.Vector(np.int8)
+        v = af.Vector(np.int8, comment="vector")
+    print(aDataset.get_dict())
+    assert repr(aDataset) == "\n".join([
+        "aDataset",
+        "s: ScalarObject <class 'object'>  # scalar",
+        "v: Vector <class 'numpy.int8'>  # vector",
+    ])
     data = aDataset()
     assert data.is_dataset("v") == False
     data.alias = "this adds a new key to data.__dict__ but not to data.dict"
@@ -89,13 +100,13 @@ def test_dataset_instantiation_leaves_class_attrs_unmodified():
 def test_dataset_scalar():
     class aScalarDataset(af.Dataset):
         v1 = af.Scalar(np.bool_, comment="first")
-        v2 = af.ScalarF16("second")
+        v2 = af.ScalarF32("second")
     data = aScalarDataset(v1=0, v2=float("-inf"))
     assert data.v1[-1] == False
-    assert data.v2.dtype == np.float16
+    assert data.v2.dtype == np.float32
     assert data._scalars == dict(v1=0, v2=float("-inf"))
     empty_scalar_dataset_df = aScalarDataset().df
-    assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float16]
+    assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float32]
 
 def test_dataset_with_none():
     class aDatasetWithNones(af.Dataset):
