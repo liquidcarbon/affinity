@@ -5,9 +5,15 @@ What your data means should always travel together with the data.
 
 Affinity is a pythonic dialect of Data Definition Language (DDL).  Affinity does not replace any dataframe library, but can be used with any package you like.  
 
-## Usage
+## Installation
 
-For now, just copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
+Install latest release, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
+
+```
+pip install git+https://github.com/liquidcarbon/affinity.git@latest
+```
+
+## Usage
 
 ```python
 import affinity as af

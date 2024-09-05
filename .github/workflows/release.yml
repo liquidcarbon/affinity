@@ -1,0 +1,33 @@
+name: Build and Release Python Wheel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    if: contains(github.event.head_commit.message, 'release')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Build the wheel
+        run: hatch build
+
+      - name: Create a Release
+        run: |
+          RELEASE_DATE=$(date +'%Y-%m-%d')
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          UNIQUE_TAG="${RELEASE_DATE}-${COMMIT_SHA}"
+          
+          gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${UNIQUE_TAG}"
+          git tag -f latest
+          git push origin latest --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

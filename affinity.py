@@ -171,7 +171,7 @@ class Dataset:
             return cls.from_dataframe(dataframe, **kwargs)
     
     @classmethod
-    def from_dataframe(cls, dataframe: Union[pd.DataFrame|pl.DataFrame], **kwargs):
+    def from_dataframe(cls, dataframe: pd.DataFrame | Optional['pl.DataFrame'], **kwargs):
         instance = cls()
         for i, k in enumerate(dict(instance)):
             if kwargs.get("rename") in (None, False):
@@ -243,8 +243,8 @@ class Dataset:
             kv_metadata = []
             for k, v in self.metadata.items():
                 if isinstance(v, str) and "'" in v:
-                    # must escape single quotes
-                    kv_metadata.append(f"{k}: '{v.replace("'", "''")}'")
+                    _v = {v.replace("'", "''")}  # must escape single quotes
+                    kv_metadata.append(f"{k}: '{_v}'")
                 else:
                     kv_metadata.append(f"{k}: '{v}'")
             self.sql(f"""
