@@ -58,11 +58,16 @@ class Descriptor:
         return DescriptorType
 
 class Scalar(Descriptor):
+    """Scalar is a single value. In datasets, it's repeated len(dataset) times."""
+
     def __init__(self, dtype, value=None, comment=None, array_class=np.array):
         self.dtype = dtype
         self.value = value
         self.comment = comment
         self.array_class = array_class
+
+    def __len__(self):
+        return 1
 
 
 class Vector(Descriptor):
@@ -134,26 +139,23 @@ class Dataset:
             setattr(self, vector_name, field_data)
             _sizes[vector_name] = len(self.__dict__[vector_name])
         if len(self._vectors) > 0:
-            _max_size = max(_sizes.values())
-            if not all([_max_size == v for v in _sizes.values()]):
+            self._max_size = max(_sizes.values())
+            if not all([self._max_size == v for v in _sizes.values()]):
                 raise ValueError(f"vectors must be of equal size: {_sizes}")
         else:
-            _max_size = 1
+            self._max_size = 1
 
         for scalar_name in self._scalars:
             _value = fields.get(scalar_name)
             _scalar = self.__class__.__dict__[scalar_name]
             _scalar.value = _value
-            _vector_from_scalar = Vector.from_scalar(_scalar, _max_size)
+            _vector_from_scalar = Vector.from_scalar(_scalar, self._max_size)
             setattr(self, scalar_name, _vector_from_scalar)
             self._scalars[scalar_name] = _value
         
         if len(self.origin) == 1:  # only after direct __init__
             self.origin["source"] = "manual"
 
-    def __eq__(self, other):
-        return self.df.equals(other.df)
-    
     @classmethod
     def build(cls, query=None, dataframe=None, **kwargs):
         """Build from DuckDB query or a dataframe.
@@ -189,8 +191,11 @@ class Dataset:
         instance.origin["source"] += f'\nquery:\n{query}'
         return instance
 
+    def __eq__(self, other):
+        return self.df.equals(other.df)
+    
     def __len__(self) -> int:
-        return len(next(iter(self))[1])
+        return max(len(field[1]) for field in self)
 
     def __iter__(self):
         """Yields attr names and values, in same order as defined in class."""
@@ -210,7 +215,7 @@ class Dataset:
  
     def is_dataset(self, key):
         attr = getattr(self, key, None)
-        if attr is None or len(attr) == 0:
+        if attr is None or len(attr) == 0 or isinstance(attr, Scalar):
             return False
         else:
             return all(isinstance(v, Dataset) for v in attr)

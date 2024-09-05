@@ -70,11 +70,12 @@ def test_dataset_with_overflows():
 
 def test_empty_dataset():
     class aDataset(af.Dataset):
+        s = af.ScalarObject("scalar")
         v = af.Vector(np.int8)
     data = aDataset()
     assert data.is_dataset("v") == False
     data.alias = "this adds a new key to data.__dict__ but not to data.dict"
-    assert data.df.shape == (0, 1)
+    assert data.df.shape == (0, 2)
     assert data.df.dtypes["v"] == np.int8
 
 
@@ -93,7 +94,15 @@ def test_dataset_scalar():
     assert data.v1[-1] == False
     assert data.v2.dtype == np.float16
     assert data._scalars == dict(v1=0, v2=float("-inf"))
+    empty_scalar_dataset_df = aScalarDataset().df
+    assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float16]
 
+def test_dataset_with_none():
+    class aDatasetWithNones(af.Dataset):
+        v1 = af.ScalarBool("first")
+        v2 = af.VectorI8("second")
+    data = aDatasetWithNones(v1=None, v2=[None, 1])
+    assert data.shape == (2, 2)
 
 def test_dataset_scalar_vector():
     class aDatasetVectorScalar(af.Dataset):
