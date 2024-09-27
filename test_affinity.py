@@ -21,31 +21,31 @@ def test_empty_vector():
 
 
 def test_typed_descriptors():
-    s_untyped = af.ScalarObject()
+    s_untyped = af.ScalarObject("")
     assert s_untyped.dtype == object
-    v_untyped = af.VectorObject()
+    v_untyped = af.VectorObject("")
     assert v_untyped.dtype == object
-    v_bool = af.VectorBool()
+    v_bool = af.VectorBool("")
     assert v_bool.dtype == "boolean"
-    v_i8 = af.VectorI8()
+    v_i8 = af.VectorI8("")
     assert v_i8.dtype == pd.Int8Dtype()
-    v_i16 = af.VectorI16()
+    v_i16 = af.VectorI16("")
     assert v_i16.dtype == pd.Int16Dtype()
-    v_i32 = af.VectorI32()
+    v_i32 = af.VectorI32("")
     assert v_i32.dtype == pd.Int32Dtype()
-    v_i64 = af.VectorI64()
+    v_i64 = af.VectorI64("")
     assert v_i64.dtype == pd.Int64Dtype()
-    v_f16 = af.VectorF16()
+    v_f16 = af.VectorF16("")
     assert v_f16.dtype == np.float16
-    v_f32 = af.VectorF32()
+    v_f32 = af.VectorF32("")
     assert v_f32.dtype == np.float32
-    v_f64 = af.VectorF64()
+    v_f64 = af.VectorF64("")
     assert v_f64.dtype == np.float64
     assert v_f64.__class__.__name__ == "VectorF64"
 
 
 def test_vector_from_scalar():
-    s = af.ScalarBool("single boolean", values=1)
+    s = af.ScalarBool("single boolean", value=1)
     v = af.Vector.from_scalar(s)
     assert len(v) == 1
     assert v.scalar == True
@@ -77,7 +77,6 @@ def test_empty_dataset():
     class aDataset(af.Dataset):
         s = af.ScalarObject("scalar")
         v = af.Vector(np.int8, comment="vector")
-    print(aDataset.get_dict())
     assert repr(aDataset) == "\n".join([
         "aDataset",
         "s: ScalarObject <class 'object'>  # scalar",
@@ -165,9 +164,9 @@ def test_dataset_scalar_vector():
 
 def test_from_dataframe():
     class aDataset(af.Dataset):
-        v1 = af.VectorBool()
-        v2 = af.VectorF32()
-        v3 = af.VectorI16()
+        v1 = af.VectorBool("")
+        v2 = af.VectorF32("")
+        v3 = af.VectorI16("")
     source_df = pd.DataFrame({
         "v1": [1, 0],
         "v2": [0., 1.],
@@ -186,9 +185,9 @@ def test_from_dataframe():
 
 def test_from_query():
     class aDataset(af.Dataset):
-        v1 = af.VectorBool()
-        v2 = af.VectorF32()
-        v3 = af.VectorI16()
+        v1 = af.VectorBool("")
+        v2 = af.VectorF32("")
+        v3 = af.VectorI16("")
     source_df = pd.DataFrame({
         "v1": [1, 0],
         "v2": [0., 1.],
@@ -205,9 +204,9 @@ def test_from_query():
 
 def test_to_polars():
     class aDataset(af.Dataset):
-        v1 = af.VectorBool()
-        v2 = af.VectorF32()
-        v3 = af.VectorI16()
+        v1 = af.VectorBool("")
+        v2 = af.VectorF32("")
+        v3 = af.VectorI16("")
     data = aDataset(v1=[True], v2=[1/2], v3=[999])
     polars_df = data.pl
     assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
@@ -215,9 +214,9 @@ def test_to_polars():
 
 def test_to_pyarrow():
     class aDataset(af.Dataset):
-        v1 = af.VectorBool()
-        v2 = af.VectorF32()
-        v3 = af.VectorI16()
+        v1 = af.VectorBool("")
+        v2 = af.VectorF32("")
+        v3 = af.VectorI16("")
     data = aDataset(v1=[True], v2=[1/2], v3=[999])
     arrow_table = data.arrow
     assert all(
@@ -228,8 +227,8 @@ def test_to_pyarrow():
 
 def test_sql_simple():
     class aDataset(af.Dataset):
-        v1 = af.VectorI8()
-        v2 = af.VectorBool()
+        v1 = af.VectorI8("")
+        v2 = af.VectorBool("")
     data_a = aDataset(v1=[1, 2], v2=[True, False])
     data_a_sql_df = data_a.sql("FROM df").df()
     assert (data_a_sql_df.values == data_a.df.values).all()
@@ -237,19 +236,19 @@ def test_sql_simple():
 
 def test_sql_join():
     class aDataset(af.Dataset):
-        v1 = af.VectorI8()
-        v2 = af.VectorBool()
+        v1 = af.VectorI8("")
+        v2 = af.VectorBool("")
     data_a = aDataset(v1=[1, 2], v2=[True, False])
     class bDataset(af.Dataset):
-        v1 = af.VectorI8()
-        v3 = af.VectorObject()
+        v1 = af.VectorI8("")
+        v3 = af.VectorObject("")
     data_b = bDataset(v1=[1, 3], v3=["foo", "moo"])
     joined = data_a.sql("FROM df JOIN dfb USING (v1)", dfb=data_b.pl)
     assert joined.fetchone() == (1, True, "foo")
 
 def test_replacement_scan_persistence_from_last_test():
     class cDataset(af.Dataset):
-        v1 = af.VectorI8()
+        v1 = af.VectorI8("")
     cDataset().sql("FROM dfb")  # "dfb" from last test still available
     with pytest.raises(Exception):
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
@@ -269,8 +268,8 @@ def test_to_parquet_with_metadata():
     data.to_parquet(test_file_duckdb_polars, engine="duckdb", df=data.pl)
     class KeyValueMetadata(af.Dataset):
         """Stores results of reading Parquet metadata."""
-        key = af.VectorObject()
-        value = af.VectorObject()
+        key = af.VectorObject("")
+        value = af.VectorObject("")
     test_file_metadata_arrow = KeyValueMetadata.from_sql(
         f"""
         SELECT
