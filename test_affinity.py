@@ -179,7 +179,7 @@ def test_from_dataframe():
     assert data.origin.get("source") == "dataframe, shape (2, 3)"
     default_dtypes = source_df.dtypes
     desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
-    pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))   
+    pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
 
@@ -198,7 +198,7 @@ def test_from_query():
     assert data.origin.get("source") == "dataframe, shape (2, 3)\nquery:\nFROM source_df"
     default_dtypes = source_df.dtypes
     desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
-    pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))   
+    pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
 
@@ -350,4 +350,4 @@ def test_nested_dataset():
         ],
         'hours': [3, 5]
     }
-    assert t1.dict == expected_dict
+    assert t1.model_dump() == expected_dict
