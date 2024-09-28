@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 
-def try_import(module) -> Optional[object]:
+def try_import(module: str) -> Optional[object]:
     try:
         return import_module(module)
     except ImportError:
