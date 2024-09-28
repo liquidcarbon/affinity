@@ -2,11 +2,13 @@ __doc__ = """
 Module for creating well-documented datasets, with types and annotations.
 """
 
-import numpy as np
-import pandas as pd
 from importlib import import_module
 from time import time
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+
+import numpy as np
+import pandas as pd
+
 
 def try_import(module) -> Optional[object]:
     try:
@@ -15,11 +17,12 @@ def try_import(module) -> Optional[object]:
         print(f"{module} not found in the current environment")
         return
 
+
 if TYPE_CHECKING:
     import duckdb  # type: ignore
+    import polars as pl  # type: ignore
     import pyarrow as pa  # type: ignore
     import pyarrow.parquet as pq  # type: ignore
-    import polars as pl  # type: ignore
 else:
     duckdb = try_import("duckdb")
     pl = try_import("polars")
@@ -28,14 +31,15 @@ else:
 
 
 class Descriptor:
+    """Base class for scalars and vectors."""
+
     def __get__(self, instance, owner):
         return self if not instance else instance.__dict__[self.name]
 
     def __set__(self, instance, values):
         try:
             _values = self.array_class(
-                values if values is not None else [],
-                dtype=self.dtype
+                values if values is not None else [], dtype=self.dtype
             )
         except OverflowError as e:
             raise e
@@ -56,7 +60,7 @@ class Descriptor:
 
     @classmethod
     def factory(cls, dtype, array_class=pd.Series, cls_name=None):
-        """Factory method to create classes.
+        """Factory method for creating typed classes.
 
         Reverted to explicit class declarations.
         Unable to convince IDEs that factory-made classes are not of "DescriptorType".
@@ -65,6 +69,7 @@ class Descriptor:
         class DescriptorType(cls):
             def __init__(self, comment=None, *, values=None, array_class=array_class):
                 super().__init__(dtype, values, comment, array_class)
+
         if cls_name:
             DescriptorType.__name__ = cls_name
         return DescriptorType
@@ -87,9 +92,11 @@ class Scalar(Descriptor):
 
 
 class Vector(Descriptor):
+    """Vectors are typed arrays of values."""
+
     @classmethod
     def from_scalar(cls, scalar: Scalar, length=1):
-        _value = [] if (not length or scalar.value is None) else [scalar.value]*length
+        _value = [] if (not length or scalar.value is None) else [scalar.value] * length
         instance = cls(scalar.dtype, _value, scalar.comment, scalar.array_class)
         instance.scalar = scalar.value
         return instance
@@ -126,7 +133,7 @@ class DatasetMeta(type):
     def __repr__(cls) -> str:
         _lines = [cls.__name__]
         for k, v in cls.__dict__.items():
-            if isinstance (v, Descriptor):
+            if isinstance(v, Descriptor):
                 _lines.append(f"{k}: {v.info}")
         return "\n".join(_lines)
 
@@ -134,31 +141,33 @@ class DatasetMeta(type):
 class Dataset(metaclass=DatasetMeta):
     """Base class for typed, annotated datasets."""
 
+    save_to = {"partition": tuple(), "prefix": "", "file": ""}
+
     @classmethod
     def get_scalars(cls):
-        return {k: None for k,v in cls.__dict__.items() if isinstance(v, Scalar)}
+        return {k: None for k, v in cls.__dict__.items() if isinstance(v, Scalar)}
 
     @classmethod
     def get_vectors(cls):
-        return {k: None for k,v in cls.__dict__.items() if isinstance(v, Vector)}
+        return {k: None for k, v in cls.__dict__.items() if isinstance(v, Vector)}
 
     @classmethod
     def get_dict(cls):
         return dict(cls())
 
-    def __init__(self, **fields: Union[Scalar|Vector]):
+    def __init__(self, **fields: Union[Scalar, Vector]):
         """Create dataset, dynamically setting field values.
 
         Vectors are initialized first, ensuring all are of equal length.
         Scalars are filled in afterwards.
         """
 
-        self.origin = {"created_ts": int(time() * 1000)}
-        _sizes = {}
         self._vectors = self.__class__.get_vectors()
         self._scalars = self.__class__.get_scalars()
         if len(self._vectors) == 0 and len(self._scalars) == 0:
             raise ValueError("no attributes defined in your dataset")
+        self.origin = {"created_ts": int(time() * 1000)}
+        _sizes = {}
         for vector_name in self._vectors:
             field_data = fields.get(vector_name)
             setattr(self, vector_name, field_data)
@@ -196,7 +205,9 @@ class Dataset(metaclass=DatasetMeta):
             return cls.from_dataframe(dataframe, **kwargs)
 
     @classmethod
-    def from_dataframe(cls, dataframe: pd.DataFrame | Optional['pl.DataFrame'], **kwargs):
+    def from_dataframe(
+        cls, dataframe: pd.DataFrame | Optional["pl.DataFrame"], **kwargs
+    ):
         instance = cls()
         for i, k in enumerate(dict(instance)):
             if kwargs.get("rename") in (None, False):
@@ -213,7 +224,7 @@ class Dataset(metaclass=DatasetMeta):
         if kwargs.get("method") in ("polars",):
             query_results = duckdb.sql(query).pl()
         instance = cls.from_dataframe(query_results, **kwargs)
-        instance.origin["source"] += f'\nquery:\n{query}'
+        instance.origin["source"] += f"\nquery:\n{query}"
         return instance
 
     def __eq__(self, other):
@@ -225,9 +236,7 @@ class Dataset(metaclass=DatasetMeta):
     def __iter__(self):
         """Yields attr names and values, in same order as defined in class."""
         yield from (
-            (k, self.__dict__[k])
-            for k in self.__class__.__dict__
-            if k in self.__dict__
+            (k, self.__dict__[k]) for k in self.__class__.__dict__ if k in self.__dict__
         )
 
     def __repr__(self):
@@ -237,6 +246,59 @@ class Dataset(metaclass=DatasetMeta):
         for k, v in dict_list.items():
             lines.append(f"{k} = {v}".replace(", '...',", " ..."))
         return "\n".join(lines)
+
+    @property
+    def shape(self):
+        return len(self), len(self._vectors) + len(self._scalars)
+
+    @property
+    def dict(self) -> dict:
+        """JSON-like dict, with scalars as scalars and vectors as lists."""
+        _dict = self.df.to_dict("list")
+        return {**_dict, **self._scalars}
+
+    @property
+    def data_dict(self) -> dict:
+        return {k: self.__class__.__dict__[k].comment for k, v in self}
+
+    @property
+    def metadata(self) -> dict:
+        """The metadata for the dataclass instance."""
+        return {
+            "table_comment": self.__class__.__doc__,
+            **self.data_dict,
+            **self.origin,
+        }
+
+    @property
+    def df(self) -> pd.DataFrame:
+        _dict = {
+            k: [v.dict for v in vector] if self.is_dataset(k) else vector
+            for k, vector in self
+        }
+        return pd.DataFrame(_dict)
+
+    @property
+    def df4(self) -> pd.DataFrame:
+        if len(self) > 4:
+            df = self.df.iloc[[0, 1, -2, -1], :]
+            df.loc[1.5] = "..."  # fake spacer row
+            return df.sort_index()
+        else:
+            return self.df
+
+    @property
+    def arrow(self) -> "pa.Table":
+        metadata = {str(k): str(v) for k, v in self.metadata.items()}
+        _dict = {
+            k: [v.dict for v in vector] if self.is_dataset(k) else vector
+            for k, vector in self
+        }
+        return pa.table(_dict, metadata=metadata)
+
+    @property
+    def pl(self) -> "pl.DataFrame":
+        return pl.DataFrame(dict(self))
 
     def is_dataset(self, key):
         attr = getattr(self, key, None)
@@ -279,150 +341,104 @@ class Dataset(metaclass=DatasetMeta):
                     kv_metadata.append(f"{k}: '{_v}'")
                 else:
                     kv_metadata.append(f"{k}: '{v}'")
-            self.sql(f"""
+            self.sql(
+                f"""
             COPY (SELECT * FROM df) TO {path} (
                 FORMAT PARQUET,
                 KV_METADATA {{ {", ".join(kv_metadata)} }}
-            );""", **kwargs)
+            );""",
+                **kwargs,
+            )
         return path
 
-    @property
-    def shape(self):
-        return len(self), len(self._vectors) + len(self._scalars)
-
-    @property
-    def dict(self) -> dict:
-        """JSON-like dict, with scalars as scalars and vectors as lists."""
-        _dict = self.df.to_dict("list")
-        return {**_dict, **self._scalars}
-
-    @property
-    def data_dict(self) -> dict:
-        return {k: self.__class__.__dict__[k].comment for k, v in self}
-
-    @property
-    def metadata(self) -> dict:
-        """The metadata for the dataclass instance."""
-        return {
-            "table_comment": self.__class__.__doc__,
-            **self.data_dict,
-            **self.origin
-        }
-
-    @property
-    def df(self) -> pd.DataFrame:
-        _dict = {
-            k: [v.dict for v in vector] if self.is_dataset(k) else vector
-            for k, vector in self
-        }
-        return pd.DataFrame(_dict)
-
-
-    @property
-    def df4(self) -> pd.DataFrame:
-        if len(self) > 4:
-            df = self.df.iloc[[0, 1, -2, -1], :]
-            df.loc[1.5] = "..."  # fake spacer row
-            return df.sort_index()
-        else:
-            return self.df
-
-    @property
-    def arrow(self) -> "pa.Table":
-        metadata = {str(k): str(v) for k, v in self.metadata.items()}
-        _dict = {
-            k: [v.dict for v in vector] if self.is_dataset(k) else vector
-            for k, vector in self
-        }
-        return pa.table(_dict, metadata=metadata)
-
-    @property
-    def pl(self) -> "pl.DataFrame":
-        return pl.DataFrame(dict(self))
+    def save(self):
+        """Path and format constructed from `save_to` attribute."""
+        raise NotImplementedError
 
 
 ### Typed scalars and vectors
 
+
 class ScalarObject(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=object, comment=comment, value=value, array_class=array_class)
+        super().__init__(object, value, comment, array_class)
 
 
 class ScalarBool(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype="boolean", comment=comment, value=value, array_class=array_class)
+        super().__init__("boolean", value, comment, array_class)
 
 
 class ScalarI8(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int8Dtype(), comment=comment, value=value, array_class=array_class)
+        super().__init__(pd.Int8Dtype(), value, comment, array_class)
 
 
 class ScalarI16(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int16Dtype(), comment=comment, value=value, array_class=array_class)
+        super().__init__(pd.Int16Dtype(), value, comment, array_class)
 
 
 class ScalarI32(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int32Dtype(), comment=comment, value=value, array_class=array_class)
+        super().__init__(pd.Int32Dtype(), value, comment, array_class)
 
 
 class ScalarI64(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int64Dtype(), comment=comment, value=value, array_class=array_class)
+        super().__init__(pd.Int64Dtype(), value, comment, array_class)
 
 
 class ScalarF32(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=np.float32, comment=comment, value=value, array_class=array_class)
+        super().__init__(np.float32, value, comment, array_class)
 
 
 class ScalarF64(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
-        super().__init__(dtype=np.float64, comment=comment, value=value, array_class=array_class)
+        super().__init__(np.float64, value, comment, array_class)
 
 
 class VectorObject(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=object, comment=comment, values=values, array_class=array_class)
+        super().__init__(object, values, comment, array_class)
 
 
 class VectorBool(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype="boolean", comment=comment, values=values, array_class=array_class)
+        super().__init__("boolean", values, comment, array_class)
 
 
 class VectorI8(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int8Dtype(), comment=comment, values=values, array_class=array_class)
+        super().__init__(pd.Int8Dtype(), values, comment, array_class)
 
 
 class VectorI16(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int16Dtype(), comment=comment, values=values, array_class=array_class)
+        super().__init__(pd.Int16Dtype(), values, comment, array_class)
 
 
 class VectorI32(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int32Dtype(), comment=comment, values=values, array_class=array_class)
+        super().__init__(pd.Int32Dtype(), values, comment, array_class)
 
 
 class VectorI64(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=pd.Int64Dtype(), comment=comment, values=values, array_class=array_class)
+        super().__init__(pd.Int64Dtype(), values, comment, array_class)
 
 
 class VectorF16(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=np.float16, comment=comment, values=values, array_class=array_class)
+        super().__init__(np.float16, values, comment, array_class)
 
 
 class VectorF32(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=np.float32, comment=comment, values=values, array_class=array_class)
+        super().__init__(np.float32, values, comment, array_class)
 
 
 class VectorF64(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__(dtype=np.float64, comment=comment, values=values, array_class=array_class)
+        super().__init__(np.float64, values, comment, array_class)

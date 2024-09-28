@@ -22,3 +22,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
