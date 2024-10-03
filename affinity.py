@@ -62,8 +62,8 @@ class Descriptor:
     def factory(cls, dtype, array_class=pd.Series, cls_name=None):
         """Factory method for creating typed classes.
 
-        Reverted to explicit class declarations.
-        Unable to convince IDEs that factory-made classes are not of "DescriptorType".
+        I failed to convince IDEs that factory-made classes are not of "DescriptorType"
+        and reverted to explicit class declarations.
         """
 
         class DescriptorType(cls):
