@@ -5,6 +5,9 @@ What your data means should always travel together with the data.
 
 Affinity is a pythonic dialect of Data Definition Language (DDL).  Affinity does not replace any dataframe library, but can be used with any package you like.
 
+If you're unsatisfied that documenting your data models has remained an afterthought, check out the ideas here.
+
+
 ## Installation
 
 Install latest release, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
@@ -14,6 +17,8 @@ pip install git+https://github.com/liquidcarbon/affinity.git@latest
 ```
 
 ## Usage
+
+Now all your data models can be declared as python classes.
 
 ```python
 import affinity as af
@@ -47,8 +52,8 @@ The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the beha
 - class attributes can be represented by any array (default: `pd.Series` because it handles nullable integers well; available: numpy, polars, arrow)
 - class instances can be constructed from any scalars or iterables
 - class instances can be cast into any dataframe flavor, and all their methods are available
-- type hints for vector data
-  
+- type hints for scalar and vector data
+
 ![image](https://github.com/user-attachments/assets/613cf6a5-7db8-465d-bb6d-3072e1b7888b)
 
 
