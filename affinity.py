@@ -2,9 +2,11 @@ __doc__ = """
 Module for creating well-documented datasets, with types and annotations.
 """
 
+from dataclasses import dataclass, field
 from importlib import import_module
+from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -28,6 +30,30 @@ else:
     pl = try_import("polars")
     pa = try_import("pyarrow")
     pq = try_import("pyarrow.parquet")
+
+try:
+    # streaming to/from cloud
+    pass
+except Exception:
+    pass
+
+
+@dataclass
+class Location:
+    folder: str | Path = field(default=Path("."))
+    file: str | Path = field(default="export.csv")
+    partition_by: List[str] = field(default_factory=list)
+
+    @property
+    def path(self) -> str:
+        _path = (
+            self.folder.as_posix() if isinstance(self.folder, Path) else self.folder
+        ).rstrip("/")
+        for part in self.partition_by:
+            _path += f"/{part}={{}}"
+        else:
+            _path += f"/{self.file}"
+        return _path
 
 
 class Descriptor:
@@ -128,7 +154,13 @@ class Vector(Descriptor):
 
 
 class DatasetMeta(type):
-    """Metaclass for custom repr."""
+    """Metaclass for universal attributes and custom repr."""
+
+    def __new__(cls, name, bases, dct):
+        new_class = super().__new__(cls, name, bases, dct)
+        if "LOCATION" not in dct:
+            new_class.LOCATION = Location(file=f"{name}_export.csv")
+        return new_class
 
     def __repr__(cls) -> str:
         _lines = [cls.__name__]
@@ -140,8 +172,6 @@ class DatasetMeta(type):
 
 class Dataset(metaclass=DatasetMeta):
     """Base class for typed, annotated datasets."""
-
-    save_to = {"partition": tuple(), "prefix": "", "file": ""}
 
     @classmethod
     def get_scalars(cls):
@@ -155,7 +185,7 @@ class Dataset(metaclass=DatasetMeta):
     def get_dict(cls):
         return dict(cls())
 
-    def __init__(self, **fields: Union[Scalar, Vector]):
+    def __init__(self, **fields: Scalar | Vector):
         """Create dataset, dynamically setting field values.
 
         Vectors are initialized first, ensuring all are of equal length.
@@ -331,9 +361,11 @@ class Dataset(metaclass=DatasetMeta):
         return self.dict
 
     def to_parquet(self, path, engine="duckdb", **kwargs):
-        if engine == "arrow":
+        if engine == "pandas":
+            self.df.to_parquet(path)
+        elif engine == "arrow":
             pq.write_table(self.arrow, path)
-        if engine == "duckdb":
+        elif engine == "duckdb":
             kv_metadata = []
             for k, v in self.metadata.items():
                 if isinstance(v, str) and "'" in v:
@@ -349,11 +381,28 @@ class Dataset(metaclass=DatasetMeta):
             );""",
                 **kwargs,
             )
+        else:
+            raise NotImplementedError
         return path
 
-    def save(self):
-        """Path and format constructed from `save_to` attribute."""
-        raise NotImplementedError
+    def partition(self) -> Tuple[List[str], List[str]]:
+        """Path and format constructed from `LOCATION` attribute."""
+
+        _file = Path(self.LOCATION.file)
+        _stem = _file.stem
+        _ext = _file.suffix
+        if len(self.LOCATION.partition_by) == 0:
+            _partitions_iter = zip([""], [self.df])
+        else:
+            _partitions_iter = self.df.groupby(self.LOCATION.partition_by)
+        paths = []
+        partitions = []
+        for partition, data in _partitions_iter:
+            _path = self.LOCATION.path.format(*partition)
+            # paths.append((_path, self.__class__.build(dataframe=data)))
+            paths.append(_path)
+            partitions.append(self.__class__.build(dataframe=data))
+        return paths, partitions
 
 
 ### Typed scalars and vectors

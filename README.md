@@ -1,9 +1,9 @@
 # Affinity
 
-Affinity makes it easy to create well-annotated datasets from vector data.  
+Affinity makes it easy to create well-annotated datasets from vector data.
 What your data means should always travel together with the data.
 
-Affinity is a pythonic dialect of Data Definition Language (DDL).  Affinity does not replace any dataframe library, but can be used with any package you like.  
+Affinity is a pythonic dialect of Data Definition Language (DDL).  Affinity does not replace any dataframe library, but can be used with any package you like.
 
 ## Installation
 
@@ -25,6 +25,7 @@ class SensorData(af.Dataset):
   voltage = af.VectorF64("something we measured (mV)")
   is_laser_on = af.VectorBool("are the lights on?")
   exp_id = af.ScalarI32("FK to `experiment`")
+  LOCATION = af.Location(folder="s3://mybucket/affinity", file="raw.parquet", partition_by=["channel"])
 
 # this working concept covers the following:
 data = SensorData()                 # ✅ empty dataset
@@ -35,8 +36,7 @@ data.metadata                       # ✅ annotations (data dict with column and
 data.origin                         # ✅ creation metadata, some data provenance
 data.sql(...)                       # ✅ run DuckDB SQL query on the dataset
 data.to_parquet(...)                # ✅ data.metadata -> Parquet metadata
-data.to_csv(...)                    # ⚒️ annotations in the header
-data.to_excel(...)                  # ⚒️ annotations on separate sheet
+data.partition()                    # ✅ get formatted paths and partitioned datasets
 ```
 
 
@@ -51,7 +51,7 @@ The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the beha
 
 ## Detailed example: Parquet Round-Trip
 
-Affinity makes class declaration as concise as possible.  
+Affinity makes class declaration as concise as possible.
 All you need to create a data class are typed classes and comments explaining what the fields mean.
 
 #### 1. Declare class
@@ -61,7 +61,7 @@ import affinity as af
 
 class IsotopeData(af.Dataset):
     """NIST Atomic Weights & Isotopic Compositions.[^1]
-  
+
     [^1] https://www.nist.gov/pml/atomic-weights-and-isotopic-compositions-relative-atomic-masses
     """
     symbol = af.VectorObject("Element")
@@ -83,7 +83,7 @@ The class attributes are instantiated Vector objects of zero length.  Using the 
 
 #### 2. Build class instance from querying a CSV
 
-To build the dataset, we use `IsotopeData.build()` method with `query` argument.  We use DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), with `rename=True` keyword argument.  The fields in the query result will be assigned names and types provided in the class definition.  With `rename=False` (default), the source columns must be named exactly as class attributes.  When safe type casting is not possible, an error will be raised; element with z=128 would not fit this dataset. 
+To build the dataset, we use `IsotopeData.build()` method with `query` argument.  We use DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), with `rename=True` keyword argument.  The fields in the query result will be assigned names and types provided in the class definition.  With `rename=False` (default), the source columns must be named exactly as class attributes.  When safe type casting is not possible, an error will be raised; element with z=128 would not fit this dataset.
 
 ```python
 url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
@@ -129,7 +129,7 @@ pf.schema_arrow
 # abundance: double
 # -- schema metadata --
 # table_comment: 'NIST Atomic Weights & Isotopic Compositions.[^1]
-  
+
 #     [' + 97
 # symbol: 'Element'
 # z: 'Atomic Number (Z)'
@@ -198,7 +198,7 @@ CREATE EXTERNAL TABLE [IF NOT EXISTS]
  [PARTITIONED BY (col_name data_type [COMMENT col_comment], ...)]
  [CLUSTERED BY (col_name, col_name, ...) INTO num_buckets BUCKETS]
  [ROW FORMAT row_format]
- [STORED AS file_format] 
+ [STORED AS file_format]
  [WITH SERDEPROPERTIES (...)]
  [LOCATION 's3://amzn-s3-demo-bucket/[folder]/']
  [TBLPROPERTIES ( ['has_encrypted_data'='true | false',] ['classification'='aws_glue_classification',] property_name=property_value [, ...] ) ]
