@@ -69,7 +69,7 @@ class IsotopeData(af.Dataset):
     mass = af.VectorF64("Isotope Mass (Da)")
     abundance = af.VectorF64("Relative natural abundance")
 
-IsotopesData.z
+IsotopeData.z
 # DescriptorType Int8 of len 0  # Atomic Number (Z)
 # Series([], dtype: Int8)
 
@@ -77,6 +77,9 @@ IsotopeData().pl  # show fields and types
 # shape: (0, 4)
 # symbol  z  mass abundance
 #    str i8   f64       f64
+
+IsotopeData.LOCATION  # new in v0.4
+# Location(folder=PosixPath('.'), file='IsotopeData_export.csv', partition_by=[])
 ```
 
 The class attributes are instantiated Vector objects of zero length.  Using the [desciptor pattern](https://docs.python.org/3/howto/descriptor.html), they are replaced with actual data arrays on building the instance.
@@ -172,6 +175,49 @@ assert data_from_sql == data_from_parquet
 print(data_from_parquet.pl.dtypes)
 # [String, Int8, Float64, Float64]
 ```
+
+#### 7. Bonus: Partitions
+
+The special attribute `LOCATION` helps you write the data where you want, how you want it.
+
+On calling `af.Dataset.partition()`, you'll get the formatted list of Hive-style partitions and the datasets broken up accordingly.
+
+This is en route to `af.Dataset.save()`, which in all likelihood won't be done since there's far too many ways to handle this.
+
+```python
+class PartitionedIsotopeData(af.Dataset):
+    symbol = af.VectorObject("Element")
+    z = af.VectorI8("Atomic Number (Z)")
+    mass = af.VectorF64("Isotope Mass (Da)")
+    abundance = af.VectorF64("Relative natural abundance")
+    LOCATION = af.Location(folder="mydata", file="isotopes.csv", partition_by=["z"])
+
+    url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
+data_from_sql = PartitionedIsotopeData.build(query=f"FROM '{url}'", rename=True)
+paths, partitions = data_from_sql.partition()
+paths[:3], partitions[:3]
+
+# (['mydata/z=1/isotopes.csv',
+#   'mydata/z=2/isotopes.csv',
+#   'mydata/z=3/isotopes.csv'],
+#  [Dataset PartitionedIsotopeData of shape (3, 4)
+#   symbol = ['H', 'H', 'H']
+#   z = [1, 1, 1]
+#   mass = [1.007825, 2.014102, 3.016049]
+#   abundance = [0.999885, 0.000115, 0.0],
+#   Dataset PartitionedIsotopeData of shape (2, 4)
+#   symbol = ['He', 'He']
+#   z = [2, 2]
+#   mass = [3.016029, 4.002603]
+#   abundance = [1e-06, 0.999999],
+#   Dataset PartitionedIsotopeData of shape (2, 4)
+#   symbol = ['Li', 'Li']
+#   z = [3, 3]
+#   mass = [6.015123, 7.016003]
+#   abundance = [0.0759, 0.9241]])
+```
+
+
 
 
 
