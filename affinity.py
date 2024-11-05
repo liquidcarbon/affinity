@@ -399,7 +399,6 @@ class Dataset(metaclass=DatasetMeta):
         partitions = []
         for partition, data in _partitions_iter:
             _path = self.LOCATION.path.format(*partition)
-            # paths.append((_path, self.__class__.build(dataframe=data)))
             paths.append(_path)
             partitions.append(self.__class__.build(dataframe=data))
         return paths, partitions

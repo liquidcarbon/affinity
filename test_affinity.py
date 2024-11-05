@@ -1,10 +1,14 @@
 from pathlib import Path
 
+import duckdb
 import numpy as np
 import pandas as pd
 import pytest
 
 import affinity as af
+
+# https://github.com/duckdb/duckdb/issues/14179
+duckdb.sql("SET python_scan_all_frames=true")
 
 
 def test_scalar():
@@ -142,6 +146,7 @@ def test_dataset_scalar_vector():
     data1 = aDatasetVectorScalar(v1=list("abcdef"), v2=2, v3=range(6))
     assert len(data1) == 6
     assert data1.shape == (6, 3)
+    assert list(data1.v3)[-1] == 5.0
     assert data1.data_dict == {"v1": "first", "v2": "second", "v3": "third"}
     expected_dict = dict(v1=list("abcdef"), v2=2, v3=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
     assert data1.dict == expected_dict
