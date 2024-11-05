@@ -178,7 +178,7 @@ print(data_from_parquet.pl.dtypes)
 
 #### 7. Bonus: Partitions
 
-The special attribute `LOCATION` helps you write the data where you want, how you want it.
+The special attribute `LOCATION` helps you write the data where you want, how you want it.  `LOCATION` does not have to be declared, but it is set to sensible (unpartitioned) defaults.
 
 On calling `af.Dataset.partition()`, you'll get the formatted list of Hive-style partitions and the datasets broken up accordingly.
 
@@ -190,16 +190,18 @@ class PartitionedIsotopeData(af.Dataset):
     z = af.VectorI8("Atomic Number (Z)")
     mass = af.VectorF64("Isotope Mass (Da)")
     abundance = af.VectorF64("Relative natural abundance")
-    LOCATION = af.Location(folder="mydata", file="isotopes.csv", partition_by=["z"])
+    LOCATION = af.Location(folder="s3://myisotopes", file="data.csv", partition_by=["z"])
 
-    url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
+
+url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
 data_from_sql = PartitionedIsotopeData.build(query=f"FROM '{url}'", rename=True)
+
 paths, partitions = data_from_sql.partition()
 paths[:3], partitions[:3]
 
-# (['mydata/z=1/isotopes.csv',
-#   'mydata/z=2/isotopes.csv',
-#   'mydata/z=3/isotopes.csv'],
+# (['s3://myisotopes/z=1/data.csv',
+#   's3://myisotopes/z=2/data.csv',
+#   's3://myisotopes/z=3/data.csv'],
 #  [Dataset PartitionedIsotopeData of shape (3, 4)
 #   symbol = ['H', 'H', 'H']
 #   z = [1, 1, 1]
