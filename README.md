@@ -47,6 +47,9 @@ The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the beha
 - class attributes can be represented by any array (default: `pd.Series` because it handles nullable integers well; available: numpy, polars, arrow)
 - class instances can be constructed from any scalars or iterables
 - class instances can be cast into any dataframe flavor, and all their methods are available
+- type hints for vector data
+  
+![image](https://github.com/user-attachments/assets/613cf6a5-7db8-465d-bb6d-3072e1b7888b)
 
 
 ## Detailed example: Parquet Round-Trip
@@ -82,7 +85,7 @@ IsotopeData.LOCATION  # new in v0.4
 # Location(folder=PosixPath('.'), file='IsotopeData_export.csv', partition_by=[])
 ```
 
-The class attributes are instantiated Vector objects of zero length.  Using the [desciptor pattern](https://docs.python.org/3/howto/descriptor.html), they are replaced with actual data arrays on building the instance.
+The class attributes are instantiated Vector objects of zero length.  Using the [descriptor pattern](https://docs.python.org/3/howto/descriptor.html), they are replaced with actual data arrays on building the instance.
 
 #### 2. Build class instance from querying a CSV
 
