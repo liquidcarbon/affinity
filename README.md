@@ -204,27 +204,28 @@ class PartitionedIsotopeData(af.Dataset):
 url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
 data_from_sql = PartitionedIsotopeData.build(query=f"FROM '{url}'", rename=True)
 
-paths, partitions = data_from_sql.partition()
-paths[:3], partitions[:3]
+names, folders, filepaths, datasets = data_from_sql.partition()
+# this variety of outputs is helpful when populating cloud warehouses,
+# such as Athena/Glue via awswrangler.
 
-# (['s3://myisotopes/z=1/data.csv',
-#   's3://myisotopes/z=2/data.csv',
-#   's3://myisotopes/z=3/data.csv'],
-#  [Dataset PartitionedIsotopeData of shape (3, 4)
-#   symbol = ['H', 'H', 'H']
-#   z = [1, 1, 1]
-#   mass = [1.007825, 2.014102, 3.016049]
-#   abundance = [0.999885, 0.000115, 0.0],
-#   Dataset PartitionedIsotopeData of shape (2, 4)
-#   symbol = ['He', 'He']
-#   z = [2, 2]
-#   mass = [3.016029, 4.002603]
-#   abundance = [1e-06, 0.999999],
-#   Dataset PartitionedIsotopeData of shape (2, 4)
-#   symbol = ['Li', 'Li']
-#   z = [3, 3]
-#   mass = [6.015123, 7.016003]
-#   abundance = [0.0759, 0.9241]])
+names[:3], folders[:3]
+# ([['1'], ['2'], ['3']], ['s3://myisotopes/z=1/', 's3://myisotopes/z=2/', 's3://myisotopes/z=3/'])
+#
+
+filepaths[:3], datasets[:3]
+# (['s3://myisotopes/z=1/data.csv', 's3://myisotopes/z=2/data.csv', 's3://myisotopes/z=3/data.csv'], [Dataset PartitionedIsotopeData of shape (3, 4)
+# symbol = ['H', 'H', 'H']
+# z = [1, 1, 1]
+# mass = [1.007825, 2.014102, 3.016049]
+# abundance = [0.999885, 0.000115, 0.0], Dataset PartitionedIsotopeData of shape (2, 4)
+# symbol = ['He', 'He']
+# z = [2, 2]
+# mass = [3.016029, 4.002603]
+# abundance = [1e-06, 0.999999], Dataset PartitionedIsotopeData of shape (2, 4)
+# symbol = ['Li', 'Li']
+# z = [3, 3]
+# mass = [6.015123, 7.016003]
+# abundance = [0.0759, 0.9241]])
 ```
 
 

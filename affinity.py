@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 
-def try_import(module: str) -> Optional[object]:
+def try_import(module: str) -> object | None:
     try:
         return import_module(module)
     except ImportError:
@@ -46,6 +46,7 @@ class Location:
 
     @property
     def path(self) -> str:
+        """Generates paths for writing partitioned data."""
         _path = (
             self.folder.as_posix() if isinstance(self.folder, Path) else self.folder
         ).rstrip("/")
@@ -170,9 +171,7 @@ class DatasetMeta(type):
         return "\n".join(_lines)
 
 
-class Dataset(metaclass=DatasetMeta):
-    """Base class for typed, annotated datasets."""
-
+class BaseDataset(metaclass=DatasetMeta):
     @classmethod
     def get_scalars(cls):
         return {k: None for k, v in cls.__dict__.items() if isinstance(v, Scalar)}
@@ -184,6 +183,10 @@ class Dataset(metaclass=DatasetMeta):
     @classmethod
     def get_dict(cls):
         return dict(cls())
+
+
+class Dataset(BaseDataset):
+    """Base class for typed, annotated datasets."""
 
     def __init__(self, **fields: Scalar | Vector):
         """Create dataset, dynamically setting field values.
@@ -385,8 +388,12 @@ class Dataset(metaclass=DatasetMeta):
             raise NotImplementedError
         return path
 
-    def partition(self) -> Tuple[List[str], List[str]]:
-        """Path and format constructed from `LOCATION` attribute."""
+    def partition(self) -> Tuple[List[str], List[str], List[str], List[BaseDataset]]:
+        """Path and format constructed from `LOCATION` attribute.
+
+        Variety of outputs is helpful when populating cloud warehouses,
+        such as Athena/Glue via awswrangler.
+        """
 
         _file = Path(self.LOCATION.file)
         _stem = _file.stem
@@ -395,13 +402,17 @@ class Dataset(metaclass=DatasetMeta):
             _partitions_iter = zip([""], [self.df])
         else:
             _partitions_iter = self.df.groupby(self.LOCATION.partition_by)
-        paths = []
-        partitions = []
-        for partition, data in _partitions_iter:
-            _path = self.LOCATION.path.format(*partition)
-            paths.append(_path)
-            partitions.append(self.__class__.build(dataframe=data))
-        return paths, partitions
+        names = []
+        folders = []
+        filepaths = []
+        datasets = []
+        for name, data in _partitions_iter:
+            _path = self.LOCATION.path.format(*name)
+            names.append([str(p) for p in name])
+            folders.append(_path.rsplit("/", maxsplit=1)[0] + "/")
+            filepaths.append(_path)
+            datasets.append(self.__class__.build(dataframe=data))
+        return names, folders, filepaths, datasets
 
 
 ### Typed scalars and vectors

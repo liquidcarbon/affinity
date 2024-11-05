@@ -11,6 +11,16 @@ import affinity as af
 duckdb.sql("SET python_scan_all_frames=true")
 
 
+def test_location_default():
+    loc = af.Location()
+    assert loc.path == "./export.csv"
+
+
+def test_location_partitioned():
+    loc = af.Location(folder="s3://affinity", partition_by=list("ab"))
+    assert loc.path == "s3://affinity/a={}/b={}/export.csv"
+
+
 def test_scalar():
     s = af.ScalarObject("field comment")
     assert repr(s) == "ScalarObject <class 'object'>  # field comment"
@@ -368,35 +378,33 @@ def test_parquet_roundtrip_with_rename():
 
 def test_partition():
     class aDataset(af.Dataset):
-        """Delightful data."""
-
         v1 = af.VectorObject(comment="partition")
         v2 = af.VectorI16(comment="int like a three")
         v3 = af.VectorF32(comment="float like a butterfly")
 
     adata = aDataset(v1=list("aaabbc"), v2=[1, 2, 1, 2, 1, 2], v3=[9, 8, 7, 7, 8, 9])
 
-    paths, partitions = adata.partition()
-    assert paths[0] == "./aDataset_export.csv"
-    assert partitions[0] == adata
+    names, folders, filepaths, datasets = adata.partition()
+    assert filepaths[0] == "./aDataset_export.csv"
+    assert datasets[0] == adata
 
     adata.LOCATION.folder = "test_save"
     adata.LOCATION.partition_by = ["v1", "v2"]
-    paths, partitions = adata.partition()
-    assert len(paths) == 5
-    assert [len(p) for p in partitions] == [2, 1, 1, 1, 1]
+    names, folders, filepaths, datasets = adata.partition()
+    assert names == [["a", "1"], ["a", "2"], ["b", "1"], ["b", "2"], ["c", "2"]]
+    assert folders[-1] == "test_save/v1=c/v2=2/"
+    assert len(filepaths) == 5
+    assert [len(p) for p in datasets] == [2, 1, 1, 1, 1]
 
     class bDataset(af.Dataset):
-        """Delightful data."""
-
         v1 = af.VectorObject(comment="partition")
         v2 = af.VectorI16(comment="int like a three")
         v3 = af.VectorF32(comment="float like a butterfly")
         LOCATION = af.Location(folder="s3://mybucket/affinity/", partition_by=["v1"])
 
     bdata = bDataset.build(dataframe=adata.df)
-    paths, partitions = bdata.partition()
-    assert paths[0] == "s3://mybucket/affinity/v1=a/export.csv"
+    names, folders, filepaths, datasets = bdata.partition()
+    assert filepaths[0] == "s3://mybucket/affinity/v1=a/export.csv"
 
 
 def test_nested_dataset():
