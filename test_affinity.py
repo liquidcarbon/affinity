@@ -407,7 +407,7 @@ def test_partition():
     assert filepaths[0] == "s3://mybucket/affinity/v1=a/export.csv"
 
 
-def test_nested_dataset():
+def test_flatten_nested_dataset():
     class User(af.Dataset):
         name = af.ScalarObject("username")
         attrs = af.VectorObject("user attributes")
@@ -431,3 +431,18 @@ def test_nested_dataset():
         "hours": [3, 5],
     }
     assert t1.model_dump() == expected_dict
+    flattened_df = pd.DataFrame(
+        {
+            "created_ts": 123.456,
+            "name": ["Alice", "Brent"],
+            "attrs": [["adorable", "agreeable"], ["bland", "broke"]],
+            "hours": [3, 5],
+        },
+    )
+    assert t1.flatten(prefix=False).to_dict() == flattened_df.to_dict()
+    assert set(t1.flatten(prefix=True).columns) == {
+        "created_ts",
+        "hours",
+        "user.name",
+        "user.attrs",
+    }

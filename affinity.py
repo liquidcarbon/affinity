@@ -355,9 +355,25 @@ class Dataset(BaseDataset):
             duckdb.register(k, v)
         return duckdb.sql(query)
 
-    def flatten(self):
-        """List of dicts? Dict of lists? TBD"""
-        raise NotImplementedError
+    def flatten(self, prefix: bool = False) -> pd.DataFrame:
+        """Returns a flattened dataset. Experimental.
+
+        With prefix=False, columns in flattened data will be named and ordered
+        as they appear in child attributes.  With prefix=False, the names will be
+        dotted paths (user.name), and the order may be different.
+        """
+        if prefix:
+            return pd.json_normalize(self.df.to_dict("records"))
+        else:
+            return pd.concat(
+                [
+                    pd.json_normalize(self.df[col])
+                    if isinstance(getattr(self, col)[0], Dataset)
+                    else self.df[col]
+                    for col in self.df
+                ],
+                axis=1,
+            )
 
     def model_dump(self) -> dict:
         """Similar to Pydantic's model_dump; alias for dict."""
