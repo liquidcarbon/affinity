@@ -299,4 +299,8 @@ duckdb.sql("FROM 'task.parquet'")
 # │    123.456 │ {'attrs': [adorable, agreeable], 'name': Alice} │     3 │
 # │    123.456 │ {'attrs': [bland, broke], 'name': Brent}        │     5 │
 # └────────────┴─────────────────────────────────────────────────┴───────┘
+
+# return flatted dataframe
+t1.flatten(prefix=True)  # unnested columns are prefixed (user.name, user.attrs)
+t1.flatten(prefix=False)  # default: keep original column names (name, attrs)
 ```
