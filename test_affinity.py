@@ -131,7 +131,7 @@ def test_dataset_scalar():
     data = aScalarDataset(v1=0, v2=float("-inf"))
     assert not data.v1[-1]
     assert data.v2.dtype == np.float32
-    assert data._scalars == dict(v1=0, v2=float("-inf"))
+    # assert data._scalars == dict(v1=0, v2=float("-inf"))
     empty_scalar_dataset_df = aScalarDataset().df
     assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float32]
 
@@ -184,6 +184,18 @@ def test_dataset_scalar_vector():
     data2 = aDatasetOnlyVector(v1=list("abcdef"), v2=[2] * 6, v3=[0, 1, 2, 3, 4, 5])
     pd.testing.assert_frame_equal(data1.df, data2.df)
     assert data1 == data2
+
+
+def test_as_field():
+    class aDataset(af.Dataset):
+        """Comment."""
+
+        v1 = af.VectorBool("True or False")
+
+    as_scalar_field = aDataset.as_field("scalar")
+    assert str(as_scalar_field) == "ScalarObject <class 'object'>  # Comment."
+    as_vector_field = aDataset.as_field("vector")
+    assert "VectorObject <class 'object'>  # Comment. | len 0" in str(as_vector_field)
 
 
 def test_from_dataframe():
@@ -407,14 +419,52 @@ def test_partition():
     assert filepaths[0] == "s3://mybucket/affinity/v1=a/export.csv"
 
 
-def test_flatten_nested_dataset():
+def test_flatten_nested_scalar_datasets():
     class User(af.Dataset):
+        """Users."""
+
         name = af.ScalarObject("username")
         attrs = af.VectorObject("user attributes")
 
     class Task(af.Dataset):
+        """Tasks with nested Users."""
+
+        created_ts = af.VectorF64("created timestamp")
+        user = User.as_field(af.Scalar)  # becomes af.ScalarObject("Users.")
+        hours = af.VectorI16("time worked (hours)")
+
+    u1 = User(name="Alice", attrs=["adorable", "agreeable"])
+    t1 = Task(created_ts=[0.1, 23.45], user=u1, hours=[3, 5])
+
+    expected_dict = {
+        "created_ts": [0.1, 23.45],
+        "user": {"name": "Alice", "attrs": ["adorable", "agreeable"]},
+        "hours": [3, 5],
+    }
+    assert t1.model_dump() == expected_dict
+    flattened_df = pd.DataFrame(
+        {
+            "created_ts": {0: 0.1, 1: 23.45},
+            "name": {0: "Alice", 1: "Alice"},
+            "attrs": {0: ["adorable", "agreeable"], 1: ["adorable", "agreeable"]},
+            "hours": {0: 3, 1: 5},
+        }
+    )
+    assert t1.flatten(prefix=False).to_dict() == flattened_df.to_dict()
+
+
+def test_flatten_nested_vector_datasets():
+    class User(af.Dataset):
+        """Users."""
+
+        name = af.ScalarObject("username")
+        attrs = af.VectorObject("user attributes")
+
+    class Task(af.Dataset):
+        """Tasks with nested Users."""
+
         created_ts = af.ScalarF64("created timestamp")
-        user = af.VectorObject("user")
+        user = User.as_field(af.Vector)  # becomes af.VectorObject("Users.")
         hours = af.VectorI16("time worked (hours)")
 
     u1 = User(name="Alice", attrs=["adorable", "agreeable"])

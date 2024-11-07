@@ -1,5 +1,6 @@
 __doc__ = """
 Module for creating well-documented datasets, with types and annotations.
+Version 0.7.0
 """
 
 from dataclasses import dataclass, field
@@ -31,15 +32,15 @@ else:
     pa = try_import("pyarrow")
     pq = try_import("pyarrow.parquet")
 
-try:
-    # streaming to/from cloud
-    pass
-except Exception:
-    pass
-
 
 @dataclass
 class Location:
+    """Dataclass for writing the data.
+
+    Used in a special attribute `Dataset.LOCATION` that is attached to
+    all Datasets via metaclass by default, or can be set explicitly.
+    """
+
     folder: str | Path = field(default=Path("."))
     file: str | Path = field(default="export.csv")
     partition_by: List[str] = field(default_factory=list)
@@ -70,7 +71,8 @@ class Descriptor:
             )
         except OverflowError as e:
             raise e
-        except Exception as e:  # leaving blanket exception to troubleshoot
+        except Exception as e:
+            # blanket exception to troubleshoot, thus far it never came up
             raise e
         if instance is None:
             self._values = _values
@@ -90,7 +92,7 @@ class Descriptor:
         """Factory method for creating typed classes.
 
         I failed to convince IDEs that factory-made classes are not of "DescriptorType"
-        and reverted to explicit class declarations.
+        and reverted to explicit class declarations.  Keeping for posterity.
         """
 
         class DescriptorType(cls):
@@ -168,60 +170,33 @@ class DatasetMeta(type):
         for k, v in cls.__dict__.items():
             if isinstance(v, Descriptor):
                 _lines.append(f"{k}: {v.info}")
+            if isinstance(v, DatasetMeta):
+                _lines.append(f"{k}: {v.__doc__}")
         return "\n".join(_lines)
 
 
-class BaseDataset(metaclass=DatasetMeta):
+class DatasetBase(metaclass=DatasetMeta):
+    """Parent class and classmethods for main Dataset class."""
+
+    @classmethod
+    def as_field(cls, as_type: str | Scalar | Vector = Vector, comment: str = ""):
+        _comment = comment or cls.__doc__
+        if as_type in (Scalar, "scalar"):
+            return ScalarObject(_comment)
+        elif as_type in (Vector, "vector"):
+            return VectorObject(_comment)
+
     @classmethod
     def get_scalars(cls):
         return {k: None for k, v in cls.__dict__.items() if isinstance(v, Scalar)}
 
     @classmethod
     def get_vectors(cls):
-        return {k: None for k, v in cls.__dict__.items() if isinstance(v, Vector)}
+        return {k: v for k, v in cls.__dict__.items() if isinstance(v, Vector)}
 
     @classmethod
     def get_dict(cls):
         return dict(cls())
-
-
-class Dataset(BaseDataset):
-    """Base class for typed, annotated datasets."""
-
-    def __init__(self, **fields: Scalar | Vector):
-        """Create dataset, dynamically setting field values.
-
-        Vectors are initialized first, ensuring all are of equal length.
-        Scalars are filled in afterwards.
-        """
-
-        self._vectors = self.__class__.get_vectors()
-        self._scalars = self.__class__.get_scalars()
-        if len(self._vectors) == 0 and len(self._scalars) == 0:
-            raise ValueError("no attributes defined in your dataset")
-        self.origin = {"created_ts": int(time() * 1000)}
-        _sizes = {}
-        for vector_name in self._vectors:
-            field_data = fields.get(vector_name)
-            setattr(self, vector_name, field_data)
-            _sizes[vector_name] = len(self.__dict__[vector_name])
-        if len(self._vectors) > 0:
-            self._max_size = max(_sizes.values())
-            if not all([self._max_size == v for v in _sizes.values()]):
-                raise ValueError(f"vectors must be of equal size: {_sizes}")
-        else:
-            self._max_size = 1
-
-        for scalar_name in self._scalars:
-            _value = fields.get(scalar_name)
-            _scalar = self.__class__.__dict__[scalar_name]
-            _scalar.value = _value
-            _vector_from_scalar = Vector.from_scalar(_scalar, self._max_size)
-            setattr(self, scalar_name, _vector_from_scalar)
-            self._scalars[scalar_name] = _value
-
-        if len(self.origin) == 1:  # only after direct __init__
-            self.origin["source"] = "manual"
 
     @classmethod
     def build(cls, query=None, dataframe=None, **kwargs):
@@ -260,6 +235,47 @@ class Dataset(BaseDataset):
         instance.origin["source"] += f"\nquery:\n{query}"
         return instance
 
+
+class Dataset(DatasetBase):
+    """Base class for typed, annotated datasets."""
+
+    def __init__(self, **fields: Scalar | Vector):
+        """Create dataset, dynamically setting field values.
+
+        Vectors are initialized first, ensuring all are of equal length.
+        Scalars are filled in afterwards.
+        """
+        self._vectors = self.__class__.get_vectors()
+        self._scalars = self.__class__.get_scalars()
+        if len(self._vectors) + len(self._scalars) == 0:
+            raise ValueError("no attributes defined in your dataset")
+        self.origin = {"created_ts": int(time() * 1000)}
+        _sizes = {}
+        for vector_name in self._vectors:
+            _values = fields.get(vector_name)
+            setattr(self, vector_name, _values)
+            _sizes[vector_name] = len(self.__dict__[vector_name])
+        if len(self._vectors) > 0:
+            self._max_size = max(_sizes.values())
+            if not all([self._max_size == v for v in _sizes.values()]):
+                raise ValueError(f"vectors must be of equal size: {_sizes}")
+        else:
+            self._max_size = 1
+
+        for scalar_name in self._scalars:
+            _value = fields.get(scalar_name)
+            _scalar = self.__class__.__dict__[scalar_name]
+            _scalar.value = _value
+            _vector_from_scalar = Vector.from_scalar(_scalar, self._max_size)
+            setattr(self, scalar_name, _vector_from_scalar)
+            if isinstance(_value, Dataset):
+                self._scalars[scalar_name] = _value.dict
+            else:
+                self._scalars[scalar_name] = _value
+
+        if len(self.origin) == 1:  # only after direct __init__
+            self.origin["source"] = "manual"
+
     def __eq__(self, other):
         return self.df.equals(other.df)
 
@@ -282,7 +298,8 @@ class Dataset(BaseDataset):
 
     @property
     def shape(self):
-        return len(self), len(self._vectors) + len(self._scalars)
+        n_cols = len(self._vectors) + len(self._scalars)
+        return len(self), n_cols
 
     @property
     def dict(self) -> dict:
@@ -348,6 +365,7 @@ class Dataset(BaseDataset):
         This is what **replacements kwargs are for.
         By default, df=self.df (pandas dataframe) is used.
         The registered views persist across queries.  RAM impact TBD.
+        TODO: add registrations to `from_sql`
         """
         if replacements.get("df") is None:
             duckdb.register("df", self.df)
@@ -404,7 +422,7 @@ class Dataset(BaseDataset):
             raise NotImplementedError
         return path
 
-    def partition(self) -> Tuple[List[str], List[str], List[str], List[BaseDataset]]:
+    def partition(self) -> Tuple[List[str], List[str], List[str], List[DatasetBase]]:
         """Path and format constructed from `LOCATION` attribute.
 
         Variety of outputs is helpful when populating cloud warehouses,
@@ -431,7 +449,7 @@ class Dataset(BaseDataset):
         return names, folders, filepaths, datasets
 
 
-### Typed scalars and vectors
+### Typed scalars and vectors.  TODO: datetimes?
 
 
 class ScalarObject(Scalar):
