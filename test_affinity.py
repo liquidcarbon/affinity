@@ -10,6 +10,18 @@ import affinity as af
 # https://github.com/duckdb/duckdb/issues/14179
 duckdb.sql("SET python_scan_all_frames=true")
 
+try:
+    import polars
+    NO_POLARS = False
+except ImportError:
+    NO_POLARS = True
+
+try:
+    import pyarrow
+    NO_PYARROW = False
+except ImportError:
+    NO_PYARROW = True
+
 
 def test_location_default():
     loc = af.Location()
@@ -246,6 +258,7 @@ def test_from_query():
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
 
 
+@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
 def test_to_polars():
     class aDataset(af.Dataset):
         v1 = af.VectorBool("")
@@ -257,6 +270,7 @@ def test_to_polars():
     assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
 
 
+@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
 def test_to_pyarrow():
     class aDataset(af.Dataset):
         v1 = af.VectorBool("")
@@ -305,6 +319,7 @@ def test_replacement_scan_persistence_from_last_test():
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
 
 
+@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
 def test_to_parquet_with_metadata():
     class aDataset(af.Dataset):
         """Delightful data."""
@@ -366,6 +381,7 @@ def test_to_parquet_with_metadata():
     )
 
 
+@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
 def test_parquet_roundtrip_with_rename():
     class IsotopeData(af.Dataset):
         symbol = af.VectorObject("Element")
