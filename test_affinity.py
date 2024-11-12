@@ -294,6 +294,7 @@ def test_sql_simple():
     assert (data_a_sql_df.values == data_a.df.values).all()
 
 
+@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
 def test_sql_join():
     class aDataset(af.Dataset):
         v1 = af.VectorI8("")
