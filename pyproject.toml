@@ -17,6 +17,11 @@ dependencies = [
     "pandas",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
 [tool.hatch.build]
 include = [
     "affinity.py",
