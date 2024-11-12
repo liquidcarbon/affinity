@@ -294,7 +294,6 @@ def test_sql_simple():
     assert (data_a_sql_df.values == data_a.df.values).all()
 
 
-@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
 def test_sql_join():
     class aDataset(af.Dataset):
         v1 = af.VectorI8("")
@@ -307,7 +306,7 @@ def test_sql_join():
         v3 = af.VectorObject("")
 
     data_b = bDataset(v1=[1, 3], v3=["foo", "moo"])
-    joined = data_a.sql("FROM df JOIN dfb USING (v1)", dfb=data_b.pl)
+    joined = data_a.sql("FROM df JOIN dfb USING (v1)", dfb=data_b.df)
     assert joined.fetchone() == (1, True, "foo")
 
 
@@ -320,6 +319,7 @@ def test_replacement_scan_persistence_from_last_test():
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
 
 
+@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
 @pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
 def test_to_parquet_with_metadata():
     class aDataset(af.Dataset):

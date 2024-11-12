@@ -21,6 +21,12 @@ dependencies = [
 dev = [
     "pytest>=8",
 ]
+polars = [
+    "polars>=1",
+]
+pyarrow = [
+    "pyarrow>=17",
+]
 
 [tool.hatch.build]
 include = [
