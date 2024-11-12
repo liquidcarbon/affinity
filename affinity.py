@@ -348,7 +348,7 @@ class Dataset(DatasetBase):
 
     @property
     def pl(self) -> "pl.DataFrame":
-        return pl.DataFrame(self.dict)
+        return pl.DataFrame(dict(self))
 
     def is_dataset(self, key):
         attr = getattr(self, key, None)

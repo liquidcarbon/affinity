@@ -259,6 +259,7 @@ def test_from_query():
 
 
 @pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
+@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
 def test_to_polars():
     class aDataset(af.Dataset):
         v1 = af.VectorBool("")
@@ -266,6 +267,7 @@ def test_to_polars():
         v3 = af.VectorI16("")
 
     data = aDataset(v1=[True], v2=[1 / 2], v3=[999])
+    # this requires polars AND pyarrow because conversion goes via pd.Series
     polars_df = data.pl
     assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
 

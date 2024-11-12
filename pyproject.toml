@@ -19,13 +19,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
-]
-polars = [
     "polars>=1",
-]
-pyarrow = [
     "pyarrow>=17",
+    "pytest>=8",
 ]
 
 [tool.hatch.build]
