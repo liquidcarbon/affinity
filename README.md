@@ -10,11 +10,13 @@ If you're unsatisfied that documenting your data models has remained an aftertho
 
 ## Installation
 
-Install latest release, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.
+Install latest release, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.  It's only one file.
 
 ```
 pip install git+https://github.com/liquidcarbon/affinity.git@latest
 ```
+
+The name `affinity` on PyPI is taken by some project from 2006; once my [pending request](https://github.com/pypi/support/issues/5148) to claim the name comes through, it will be published to PyPI.
 
 ## Usage
 
@@ -273,7 +275,6 @@ Have you ever stared at a bunch of numbers and had no clue what they represented
 
 ## Future
 
-- pipification?  I envision that even when ~complete, this package remain just one file
 - nested data - WIP, but this already works:
 
 ```python
