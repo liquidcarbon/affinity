@@ -12,12 +12,14 @@ duckdb.sql("SET python_scan_all_frames=true")
 
 try:
     import polars
+
     NO_POLARS = False
 except ImportError:
     NO_POLARS = True
 
 try:
     import pyarrow
+
     NO_PYARROW = False
 except ImportError:
     NO_PYARROW = True
@@ -54,10 +56,15 @@ def test_empty_vector():
 def test_typed_descriptors():
     s_untyped = af.ScalarObject("")
     assert s_untyped.dtype == object
-    v_untyped = af.VectorObject("")
+    v_untyped = af.VectorObject("", values=[0, "0"])
     assert v_untyped.dtype == object
-    v_bool = af.VectorBool("")
-    assert v_bool.dtype == "boolean"
+    assert v_untyped._values.values.tolist() == [0, "0"]
+    v_str = af.VectorString("", values=[0, "0"])
+    assert v_str.dtype == pd.StringDtype()
+    assert v_str._values.tolist() == ["0", "0"]
+    v_bool = af.VectorBool("", values=[False, 1])
+    assert v_bool.dtype == v_bool.dtype
+    assert v_bool._values.tolist() == [False, True]
     v_i8 = af.VectorI8("")
     assert v_i8.dtype == pd.Int8Dtype()
     v_i16 = af.VectorI16("")
@@ -228,7 +235,7 @@ def test_from_dataframe():
     pd.testing.assert_frame_equal(data.df, data2.df)
     assert data.origin.get("source") == "dataframe, shape (2, 3)"
     default_dtypes = source_df.dtypes
-    desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
+    desired_dtypes = {"v1": np.bool, "v2": np.float32, "v3": pd.Int16Dtype()}
     pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
@@ -252,7 +259,7 @@ def test_from_query():
         data.origin.get("source") == "dataframe, shape (2, 3)\nquery:\nFROM source_df"
     )
     default_dtypes = source_df.dtypes
-    desired_dtypes = {"v1": "boolean", "v2": np.float32, "v3": pd.Int16Dtype()}
+    desired_dtypes = {"v1": np.bool, "v2": np.float32, "v3": pd.Int16Dtype()}
     pd.testing.assert_frame_equal(data.df, source_df.astype(desired_dtypes))
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))

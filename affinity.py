@@ -457,6 +457,11 @@ class ScalarObject(Scalar):
         super().__init__(object, value, comment, array_class)
 
 
+class ScalarString(Scalar):
+    def __init__(self, comment: str, *, value=None, array_class=pd.Series):
+        super().__init__(pd.StringDtype(), value, comment, array_class)
+
+
 class ScalarBool(Scalar):
     def __init__(self, comment: str, *, value=None, array_class=pd.Series):
         super().__init__("boolean", value, comment, array_class)
@@ -497,9 +502,14 @@ class VectorObject(Vector):
         super().__init__(object, values, comment, array_class)
 
 
+class VectorString(Vector):
+    def __init__(self, comment: str, *, values=None, array_class=pd.Series):
+        super().__init__(pd.StringDtype(), values, comment, array_class)
+
+
 class VectorBool(Vector):
     def __init__(self, comment: str, *, values=None, array_class=pd.Series):
-        super().__init__("boolean", values, comment, array_class)
+        super().__init__(np.bool, values, comment, array_class)
 
 
 class VectorI8(Vector):
