@@ -1,6 +1,6 @@
 __doc__ = """
 Module for creating well-documented datasets, with types and annotations.
-Version 0.7.0
+Version 0.8.1
 """
 
 from dataclasses import dataclass, field
@@ -17,7 +17,7 @@ def try_import(module: str) -> object | None:
     try:
         return import_module(module)
     except ImportError:
-        print(f"{module} not found in the current environment")
+        # print(f"{module} not found in the current environment")
         return
 
 
