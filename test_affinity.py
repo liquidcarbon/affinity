@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import ast
 import duckdb
 import numpy as np
 import pandas as pd
@@ -11,7 +12,7 @@ import affinity as af
 duckdb.sql("SET python_scan_all_frames=true")
 
 try:
-    import polars
+    import polars  # noqa: F401
 
     NO_POLARS = False
 except ImportError:
@@ -326,6 +327,32 @@ def test_replacement_scan_persistence_from_last_test():
     cDataset().sql("FROM dfb")  # "dfb" from last test still available
     with pytest.raises(Exception):
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
+
+
+@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+def test_objects_as_metadata():
+    class aDataset(af.Dataset):
+        """Objects other than strings can go into metadata."""
+
+        v1 = af.VectorBool(comment={"x": 1, "y": "z"})
+        v2 = af.VectorF32(comment=list("abc"))
+
+    def try_ast_literal_eval(x: str):
+        try:
+            return ast.literal_eval(x)
+        except (SyntaxError, ValueError):
+            return x
+
+    data = aDataset(v1=[True], v2=[1 / 2], v3=[3])
+    test_file_arrow = Path("test_arrow.parquet")
+    data.to_parquet(test_file_arrow, engine="arrow")
+    pf = pyarrow.parquet.ParquetFile(test_file_arrow)
+    pf_metadata = pf.schema_arrow.metadata
+    decoded_metadata = {
+        k.decode(): try_ast_literal_eval(v.decode()) for k, v in pf_metadata.items()
+    }
+    assert decoded_metadata.get("v1") == aDataset.v1.comment
+    assert decoded_metadata.get("v2") == aDataset.v2.comment
 
 
 @pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
