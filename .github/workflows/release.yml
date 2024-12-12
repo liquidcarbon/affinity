@@ -22,12 +22,11 @@ jobs:
 
       - name: Create a Release
         run: |
-          RELEASE_DATE=$(date +'%Y-%m-%d')
           VERSION=$(cat pyproject.toml | cut -d'"' -f2)
+          RELEASE_DATE=$(date +'%Y-%m-%d')
+          RELEASE_TITLE="Release ${VERSION} (${RELEASE_DATE})"
           
-          gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${VERSION} (${RELEASE_DATE})"
-          # git tag -f latest
-          # git push origin latest --force
+          gh release create "${VERSION}" dist/* -t "${RELEASE_TITLE}" --latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
