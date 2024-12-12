@@ -1,6 +1,5 @@
 __doc__ = """
 Module for creating well-documented datasets, with types and annotations.
-Version 0.8.1
 """
 
 from dataclasses import dataclass, field
@@ -234,6 +233,34 @@ class DatasetBase(metaclass=DatasetMeta):
         instance = cls.from_dataframe(query_results, **kwargs)
         instance.origin["source"] += f"\nquery:\n{query}"
         return instance
+
+    @property
+    def athena_types(self):
+        """Convert pandas types to SQL types for loading into AWS Athena."""
+
+        wr = try_import("awswrangler")
+        columns_types, partition_types = wr.catalog.extract_athena_types(
+            df=self.df,
+            partition_cols=self.LOCATION.partition_by,
+        )
+        return columns_types, partition_types
+
+    def kwargs_for_create_athena_table(
+        self, db: str, table: str, compression: str | None = None, **kwargs
+    ):
+        """Arguments for creating AWS Athena tables."""
+        columns_types, partitions_types = self.athena_types
+        return dict(
+            database=db,
+            table=table,
+            path=self.LOCATION.folder,
+            columns_types=columns_types,
+            partitions_types=partitions_types,
+            compression=compression,
+            description=self.__doc__,
+            columns_comments=self.data_dict,
+            **kwargs,
+        )
 
 
 class Dataset(DatasetBase):

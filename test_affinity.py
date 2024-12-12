@@ -101,7 +101,7 @@ def test_dataset_no_attributes():
 def test_wrong_dataset_declaration():
     class aDataset(af.Dataset):
         v: af.Vector(np.int8)  # type: ignore
-        # v = af.Vector(np.int8)  # the correct way
+        # v = af.Vector(np.int8)  # this is the correct way
 
     with pytest.raises(ValueError):
         aDataset()
@@ -327,6 +327,29 @@ def test_replacement_scan_persistence_from_last_test():
     cDataset().sql("FROM dfb")  # "dfb" from last test still available
     with pytest.raises(Exception):
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
+
+
+def test_kwargs_for_create_athena_table():
+    class aDataset(af.Dataset):
+        """Document me!"""
+
+        v1 = af.VectorI8("abc")
+        v2 = af.VectorString("xyz")
+        LOCATION = af.Location(folder=".", partition_by=["v1"])
+
+    create_athena_table_kwargs = aDataset().kwargs_for_create_athena_table(
+        db="bd", table="desk"
+    )
+    assert create_athena_table_kwargs == {
+        "database": "bd",
+        "table": "desk",
+        "path": ".",
+        "columns_types": {"v2": "string"},
+        "partitions_types": {"v1": "tinyint"},
+        "compression": None,
+        "description": "Document me!",
+        "columns_comments": {"v1": "abc", "v2": "xyz"},
+    }
 
 
 @pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
