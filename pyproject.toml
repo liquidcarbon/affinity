@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "affinity"
-version = "0.8.2"
+version = "0.8.3"
 description = "Module for creating well-documented datasets, with types and annotations."
 authors = [
     { name = "Alex Kislukhin" }
@@ -28,8 +28,6 @@ dev = [
 include = [
     "affinity.py",
 ]
-
-[tool.hatch.build.targets.wheel]
 
 [tool.ruff]
 line-length = 88

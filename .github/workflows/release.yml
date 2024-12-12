@@ -17,17 +17,22 @@ jobs:
       - name: Install Hatch
         run: pip install hatch
 
-      - name: Build the wheel
+      - name: Build
         run: hatch build
 
       - name: Create a Release
         run: |
           RELEASE_DATE=$(date +'%Y-%m-%d')
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          UNIQUE_TAG="${RELEASE_DATE}-${COMMIT_SHA}"
+          VERSION=$(cat pyproject.toml | cut -d'"' -f2)
           
-          gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${UNIQUE_TAG}"
-          git tag -f latest
-          git push origin latest --force
+          gh release create "${UNIQUE_TAG}" dist/affinity-*.whl --title "Release ${VERSION} (${RELEASE_DATE})"
+          # git tag -f latest
+          # git push origin latest --force
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload built package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/ 
