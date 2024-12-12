@@ -22,7 +22,7 @@ jobs:
 
       - name: Create a Release
         run: |
-          VERSION=$(cat pyproject.toml | cut -d'"' -f2)
+          VERSION=$(cat pyproject.toml | grep version | cut -d'"' -f2)
           RELEASE_DATE=$(date +'%Y-%m-%d')
           RELEASE_TITLE="Release ${VERSION} (${RELEASE_DATE})"
           
