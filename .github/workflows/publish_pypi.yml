@@ -14,11 +14,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          name: dist
-          path: ./dist/ 
+
+      - name: Install Hatch
+        run: pip install hatch
+
+      - name: Build
+        run: hatch build
+
+      # - name: Download build artifact - can't get this to work
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     name: dist
+      #     path: ./dist/ 
+      
       - name: Publish
         uses: pypa/gh-action-pypi-publish@v1.12.3
