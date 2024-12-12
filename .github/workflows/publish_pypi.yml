@@ -12,14 +12,12 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - name: Print release event details (debug)
-        run: |
-          echo "Release Tag: ${{ github.event.release.tag_name }}"
-          echo "Release Name: ${{ github.event.release.name }}"
-          echo "Release Body: ${{ github.event.release.body }}"
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           name: dist
           path: ./dist/ 
       - name: Publish
