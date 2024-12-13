@@ -10,17 +10,12 @@ If you're unsatisfied that documenting your data models has remained an aftertho
 
 ## Installation
 
-Install latest release, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.  It's only one file.
+Install with any flavor of `pip install affinity`, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.  It's only one file.
 
-```
-pip install git+https://github.com/liquidcarbon/affinity.git@latest
-```
-
-The name `affinity` on PyPI is taken by some project from 2006; once my [pending request](https://github.com/pypi/support/issues/5148) to claim the name comes through, it will be published to PyPI.
 
 ## Usage
 
-Now all your data models can be declared as python classes.
+Now all your data models can be concisely declared as python classes.
 
 ```python
 import affinity as af
@@ -34,7 +29,7 @@ class SensorData(af.Dataset):
   exp_id = af.ScalarI32("FK to `experiment`")
   LOCATION = af.Location(folder="s3://mybucket/affinity", file="raw.parquet", partition_by=["channel"])
 
-# this working concept covers the following:
+# how to use affinity Datasets:
 data = SensorData()                 # ✅ empty dataset
 data = SensorData(**fields)         # ✅ build manually
 data = SensorData.build(...)        # ✅ build from a source (dataframes, DuckDB)
@@ -51,9 +46,8 @@ data.partition()                    # ✅ get formatted paths and partitioned da
 
 The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the behavior of children data classes:
 - concise class declaration sets the expected dtypes and descriptions for each attribute (column)
-- class attributes can be represented by any array (default: `pd.Series` because it handles nullable integers well; available: numpy, polars, arrow)
-- class instances can be constructed from any scalars or iterables
-- class instances can be cast into any dataframe flavor, and all their methods are available
+- class attributes can be represented by any array (defaults to `pd.Series` because it handles nullable integers well)
+- class instances can be constructed from scalars, vectors/iterables, or other datasets
 - type hints for scalar and vector data
 
 ![image](https://github.com/user-attachments/assets/613cf6a5-7db8-465d-bb6d-3072e1b7888b)
@@ -61,7 +55,6 @@ The `af.Dataset` is Affinity's `BaseModel`, the base class that defines the beha
 
 ## Detailed example: Parquet Round-Trip
 
-Affinity makes class declaration as concise as possible.
 All you need to create a data class are typed classes and comments explaining what the fields mean.
 
 #### 1. Declare class
@@ -96,7 +89,7 @@ The class attributes are instantiated Vector objects of zero length.  Using the 
 
 #### 2. Build class instance from querying a CSV
 
-To build the dataset, we use `IsotopeData.build()` method with `query` argument.  We use DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), with `rename=True` keyword argument.  The fields in the query result will be assigned names and types provided in the class definition.  With `rename=False` (default), the source columns must be named exactly as class attributes.  When safe type casting is not possible, an error will be raised; element with z=128 would not fit this dataset.
+To build the dataset, we use `IsotopeData.build()` method with `query` argument.  We use DuckDB [FROM-first syntax](https://duckdb.org/docs/sql/query_syntax/from.html#from-first-syntax), with `rename=True` keyword argument.  The fields in the query result will be assigned names and types provided in the class definition.  With `rename=False` (default), the source columns must be named exactly as class attributes.  When safe type casting is not possible, an error will be raised; element with z=128 would not fit this dataset.  Good thing there isn't one (not even as a Wikipedia article)!
 
 ```python
 url = "https://raw.githubusercontent.com/liquidcarbon/chembiodata/main/isotopes.csv"
@@ -156,6 +149,9 @@ pf.schema_arrow
 #     Symbol as symbol,
 #  ' + 146
 ```
+
+> [!TIP]
+> Though in all examples here the comment field is a string, Arrow allows non-string data in Parquet metadata (some caveats apply).  If you're packaging multidimensional vectors, check out "test_objects_as_metadata" in the [test file](https://github.com/liquidcarbon/affinity/blob/main/test_affinity.py).
 
 #### 5. Inspect metadata using DuckDB
 
@@ -230,8 +226,7 @@ filepaths[:3], datasets[:3]
 # abundance = [0.0759, 0.9241]])
 ```
 
-
-
+If you work with AWS Athena, also check out `kwargs_for_create_athena_table` method available on all Datasets.
 
 
 ## Motivation
