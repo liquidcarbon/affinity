@@ -11,20 +11,6 @@ import affinity as af
 # https://github.com/duckdb/duckdb/issues/14179
 duckdb.sql("SET python_scan_all_frames=true")
 
-try:
-    import polars  # noqa: F401
-
-    NO_POLARS = False
-except ImportError:
-    NO_POLARS = True
-
-try:
-    import pyarrow
-
-    NO_PYARROW = False
-except ImportError:
-    NO_PYARROW = True
-
 
 def test_location_default():
     loc = af.Location()
@@ -266,8 +252,8 @@ def test_from_query():
         pd.testing.assert_frame_equal(data.df, source_df.astype(default_dtypes))
 
 
-@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
-@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+@pytest.mark.skipif(not af._modules.polars, reason="polars is not installed")
+@pytest.mark.skipif(not af._modules.pyarrow, reason="pyarrow is not installed")
 def test_to_polars():
     class aDataset(af.Dataset):
         v1 = af.VectorBool("")
@@ -280,7 +266,7 @@ def test_to_polars():
     assert str(polars_df.dtypes) == "[Boolean, Float32, Int16]"
 
 
-@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+@pytest.mark.skipif(not af._modules.pyarrow, reason="pyarrow is not installed")
 def test_to_pyarrow():
     class aDataset(af.Dataset):
         v1 = af.VectorBool("")
@@ -329,6 +315,7 @@ def test_replacement_scan_persistence_from_last_test():
         cDataset().sql("SELECT v2 FROM df")  # "df" != last test's data_a.df
 
 
+@pytest.mark.skipif(not af._modules.awswrangler, reason="awswrangler is not installed")
 def test_kwargs_for_create_athena_table():
     class aDataset(af.Dataset):
         """Document me!"""
@@ -352,7 +339,7 @@ def test_kwargs_for_create_athena_table():
     }
 
 
-@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+@pytest.mark.skipif(not af._modules.pyarrow, reason="pyarrow is not installed")
 def test_objects_as_metadata():
     class aDataset(af.Dataset):
         """Objects other than strings can go into metadata."""
@@ -369,7 +356,7 @@ def test_objects_as_metadata():
     data = aDataset(v1=[True], v2=[1 / 2], v3=[3])
     test_file_arrow = Path("test_arrow.parquet")
     data.to_parquet(test_file_arrow, engine="arrow")
-    pf = pyarrow.parquet.ParquetFile(test_file_arrow)
+    pf = af._modules.pyarrow.parquet.ParquetFile(test_file_arrow)
     pf_metadata = pf.schema_arrow.metadata
     decoded_metadata = {
         k.decode(): try_ast_literal_eval(v.decode()) for k, v in pf_metadata.items()
@@ -378,8 +365,8 @@ def test_objects_as_metadata():
     assert decoded_metadata.get("v2") == aDataset.v2.comment
 
 
-@pytest.mark.skipif(NO_POLARS, reason="polars is not installed")
-@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+@pytest.mark.skipif(not af._modules.polars, reason="polars is not installed")
+@pytest.mark.skipif(not af._modules.pyarrow, reason="pyarrow is not installed")
 def test_to_parquet_with_metadata():
     class aDataset(af.Dataset):
         """Delightful data."""
@@ -441,7 +428,7 @@ def test_to_parquet_with_metadata():
     )
 
 
-@pytest.mark.skipif(NO_PYARROW, reason="pyarrow is not installed")
+@pytest.mark.skipif(not af._modules.pyarrow, reason="pyarrow is not installed")
 def test_parquet_roundtrip_with_rename():
     class IsotopeData(af.Dataset):
         symbol = af.VectorObject("Element")

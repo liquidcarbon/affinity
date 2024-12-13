@@ -8,28 +8,32 @@ from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
+import duckdb
 import numpy as np
 import pandas as pd
 
 
-def try_import(module: str) -> object | None:
-    try:
-        return import_module(module)
-    except ImportError:
-        # print(f"{module} not found in the current environment")
-        return
+class _modules:
+    """Stores modules imported conditionally."""
+
+    def try_import(modules: List[str]) -> None:
+        """Conditional imports."""
+        for module in modules:
+            try:
+                _module = import_module(module)
+                globals()[module] = _module  # used here
+                setattr(_modules, module, _module)  # used in tests
+            except ImportError:
+                setattr(_modules, module, False)
 
 
 if TYPE_CHECKING:
-    import duckdb  # type: ignore
-    import polars as pl  # type: ignore
-    import pyarrow as pa  # type: ignore
-    import pyarrow.parquet as pq  # type: ignore
+    import awswrangler  # type: ignore
+    import polars  # type: ignore
+    import pyarrow  # type: ignore
+    import pyarrow.parquet  # type: ignore
 else:
-    duckdb = try_import("duckdb")
-    pl = try_import("polars")
-    pa = try_import("pyarrow")
-    pq = try_import("pyarrow.parquet")
+    _modules.try_import(["awswrangler", "polars", "pyarrow", "pyarrow.parquet"])
 
 
 @dataclass
@@ -213,7 +217,7 @@ class DatasetBase(metaclass=DatasetMeta):
 
     @classmethod
     def from_dataframe(
-        cls, dataframe: pd.DataFrame | Optional["pl.DataFrame"], **kwargs
+        cls, dataframe: pd.DataFrame | Optional["polars.DataFrame"], **kwargs
     ):
         instance = cls()
         for i, k in enumerate(dict(instance)):
@@ -237,9 +241,7 @@ class DatasetBase(metaclass=DatasetMeta):
     @property
     def athena_types(self):
         """Convert pandas types to SQL types for loading into AWS Athena."""
-
-        wr = try_import("awswrangler")
-        columns_types, partition_types = wr.catalog.extract_athena_types(
+        columns_types, partition_types = awswrangler.catalog.extract_athena_types(
             df=self.df,
             partition_cols=self.LOCATION.partition_by,
         )
@@ -365,17 +367,17 @@ class Dataset(DatasetBase):
             return self.df
 
     @property
-    def arrow(self) -> "pa.Table":
+    def arrow(self) -> "pyarrow.Table":
         metadata = {str(k): str(v) for k, v in self.metadata.items()}
         _dict = {
             k: [v.dict for v in vector] if self.is_dataset(k) else vector
             for k, vector in self
         }
-        return pa.table(_dict, metadata=metadata)
+        return pyarrow.table(_dict, metadata=metadata)
 
     @property
-    def pl(self) -> "pl.DataFrame":
-        return pl.DataFrame(dict(self))
+    def pl(self) -> "polars.DataFrame":
+        return polars.DataFrame(dict(self))
 
     def is_dataset(self, key):
         attr = getattr(self, key, None)
@@ -428,7 +430,7 @@ class Dataset(DatasetBase):
         if engine == "pandas":
             self.df.to_parquet(path)
         elif engine == "arrow":
-            pq.write_table(self.arrow, path)
+            pyarrow.parquet.write_table(self.arrow, path)
         elif engine == "duckdb":
             kv_metadata = []
             for k, v in self.metadata.items():
