@@ -142,6 +142,18 @@ def test_dataset_scalar():
     assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float32]
 
 
+def test_dataset_scalar_reassignment():
+    class aScalarDataset(af.Dataset):
+        v1 = af.Scalar(np.bool_, comment="first")
+        v2 = af.ScalarF32("second")
+
+    data = aScalarDataset(v1=0, v2=float("-inf"))
+    data.v1 = 1
+
+    with pytest.raises(TypeError):
+        data.v1[0] = 1
+
+
 def test_dataset_with_none():
     class aDatasetWithNones(af.Dataset):
         v1 = af.ScalarBool("first")
