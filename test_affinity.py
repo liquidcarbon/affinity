@@ -137,7 +137,7 @@ def test_dataset_scalar():
     data = aScalarDataset(v1=0, v2=float("-inf"))
     assert not data.v1[-1]
     assert data.v2.dtype == np.float32
-    # assert data._scalars == dict(v1=0, v2=float("-inf"))
+    assert data._scalars == dict(v1=0, v2=float("-inf"))
     empty_scalar_dataset_df = aScalarDataset().df
     assert empty_scalar_dataset_df.dtypes.to_list() == [np.bool_, np.float32]
 
@@ -145,25 +145,31 @@ def test_dataset_scalar():
 def test_dataset_scalar_reassignment():
     class aScalarDataset(af.Dataset):
         v1 = af.Scalar(np.bool_, comment="first")
-        v2 = af.ScalarF32("second")
+        v2 = af.ScalarObject("second")
 
-    data = aScalarDataset(v1=0, v2=float("-inf"))
-    data.v1 = 1
+    data = aScalarDataset(v1=0, v2="abc")
+    data_copy = data
+    assert data._scalars == dict(v1=False, v2="abc")
 
-    with pytest.raises(TypeError):
-        data.v1[0] = 1
+    data.v1[0] = 1  # but data.v1 will fail reassignment
+    assert data.v1
+    data.v2 = "def"
+    assert data.v2[0] == "def"
+    data.v2[0] = "foo"
+    assert data.v2[0] == "foo"
+
+    # self and _scalars do not update on reassignment
+    assert data._scalars == dict(v1=False, v2="abc")
+
+    # gotchas with copies that I don't understand:
+    data_copy.v2 = "xyz"
+    assert data_copy._scalars == dict(v1=False, v2="abc")
+    data_copy.v2[0] = "foo"
+    assert data.df.to_dict() == data_copy.df.to_dict()
+    # but pd.testing.assert_frame_equal(data.df, data_copy.df) fails here
 
 
-def test_dataset_with_none():
-    class aDatasetWithNones(af.Dataset):
-        v1 = af.ScalarBool("first")
-        v2 = af.VectorI8("second")
-
-    data = aDatasetWithNones(v1=None, v2=[None, 1])
-    assert data.shape == (2, 2)
-
-
-def test_dataset_scalar_vector():
+def test_mixed_dataset_scalar_vector():
     class aDatasetVectorScalar(af.Dataset):
         """A well-documented dataset."""
 
@@ -202,6 +208,15 @@ def test_dataset_scalar_vector():
     data2 = aDatasetOnlyVector(v1=list("abcdef"), v2=[2] * 6, v3=[0, 1, 2, 3, 4, 5])
     pd.testing.assert_frame_equal(data1.df, data2.df)
     assert data1 == data2
+
+
+def test_mixed_dataset_with_none():
+    class aDatasetWithNones(af.Dataset):
+        v1 = af.ScalarBool("first")
+        v2 = af.VectorI8("second")
+
+    data = aDatasetWithNones(v1=None, v2=[None, 1])
+    assert data.shape == (2, 2)
 
 
 def test_as_field():
