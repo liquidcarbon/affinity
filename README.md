@@ -12,6 +12,7 @@ If you're unsatisfied that documenting your data models has remained an aftertho
 
 Install with any flavor of `pip install affinity`, or copy [`affinity.py`](https://raw.githubusercontent.com/liquidcarbon/affinity/main/affinity.py) into your project.  It's only one file.
 
+🐼 🦆 Affinity requires Pandas (works with v2 and v3) and DuckDB (1.3 and up).  Polars and pyarrow are optional.
 
 ## Usage
 
@@ -267,6 +268,7 @@ Probably the single greatest source of problems is unspecified units of measure,
 - [When NASA Lost a Spacecraft Due to a Metric Math Mistake](https://www.simscale.com/blog/nasa-mars-climate-orbiter-metric/)
 
 Have you ever stared at a bunch of numbers and had no clue what they represented?  Do you have an anecdote of bad things happening due un/misannotated data? Share in [discussions](https://github.com/liquidcarbon/affinity/discussions)!
+
 
 ## Future
 
