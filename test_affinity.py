@@ -173,7 +173,8 @@ def test_mixed_dataset_scalar_vector():
     class aDatasetVectorScalar(af.Dataset):
         """A well-documented dataset."""
 
-        v1 = af.Vector(np.str_, comment="first")
+        # str dtype works in both pandas v2 and v3, np.str_ only in v2
+        v1 = af.Vector("str", comment="first")
         v2 = af.Scalar(np.int8, comment="second")
         v3 = af.VectorF16("third")
 
@@ -196,12 +197,12 @@ def test_mixed_dataset_scalar_vector():
     assert data1.metadata.get("table_comment") == "A well-documented dataset."
     assert data1.metadata.get("source") == "manual"
     expected_df = pd.DataFrame({"v1": list("abcdef"), "v2": 2, "v3": range(6)}).astype(
-        {"v1": np.str_, "v2": np.int8, "v3": np.float16}
+        {"v1": "str", "v2": np.int8, "v3": np.float16}
     )
     pd.testing.assert_frame_equal(data1.df, expected_df)
 
     class aDatasetOnlyVector(af.Dataset):
-        v1 = af.Vector(np.str_, comment="first")
+        v1 = af.Vector("str", comment="first")
         v2 = af.Vector(np.int8, comment="second")
         v3 = af.VectorF16("third")
 
